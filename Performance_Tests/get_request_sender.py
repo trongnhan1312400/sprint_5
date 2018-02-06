@@ -1,5 +1,4 @@
 import json
-import sys
 import utils
 
 from indy import ledger

@@ -158,6 +158,9 @@ class PerformanceTesterForAddingRequest:
         self.__start_threads()
         self.__finish_threads()
 
+        # Write all requests info to file.
+        self.__write_requests_info()
+
         await self.__cleanup()
 
         utils.print_header("\n\t========  Finished")
@@ -200,8 +203,10 @@ class PerformanceTesterForAddingRequest:
     def __finish_threads(self):
         for sub_thread in self.threads:
             sub_thread.join()
+
+    def __write_requests_info(self):
         with open(self.info_file_path, "w") as info_file:
-            info_file.writelines(self.req_info)
+            info_file.writelines("\n".join(self.req_info))
 
     async def __create_pool_config(self):
         try:
@@ -314,7 +319,3 @@ if __name__ == '__main__':
     seconds = 60 * minutes
     print("\n------ Elapsed time: %dh:%dm:%ds" % (
         hours, minutes, seconds) + " ------")
-
-    # Example syntax:
-    # python3.6 add_nyms.py testPool 500 000000000000000000000000Steward1 number_of_threads
-    #          |     0     |    1   | 2 |           3                             4

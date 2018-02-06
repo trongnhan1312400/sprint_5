@@ -99,7 +99,7 @@ async def send_claim_request(pool_handle, wallet_handle, submiter_did):
         nym_req = await ledger.build_nym_request(submiter_did, did, verkey,
                                                  None, None)
 
-        utils.print_header("\n======= Send schema request =======")
+        utils.print_header("\n======= Send nym request =======")
         await ledger.sign_and_submit_request(pool_handle, wallet_handle,
                                              submiter_did, nym_req)
 
