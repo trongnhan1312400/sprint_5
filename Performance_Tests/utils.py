@@ -1,6 +1,8 @@
 import random
 import string
 import os
+import sys
+import tempfile
 
 
 class Colors:
@@ -15,13 +17,79 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 
+class StandardIOInfo:
+    old_stdout = sys.stdout
+    stdout_fd = old_stdout.fileno()
+    saved_stdout_fd = os.dup(stdout_fd)
+
+    old_stderr = sys.stderr
+    stderr_fd = old_stderr.fileno()
+    saved_stderr_fd = os.dup(stderr_fd)
+    capture = 0
+    capture_file = None
+
+
+def start_capture_console():
+    if StandardIOInfo.capture > 0:
+        StandardIOInfo.capture += 1
+        return None
+    StandardIOInfo.capture += 1
+    StandardIOInfo.capture_file = tempfile.TemporaryFile("w")
+    os.dup2(StandardIOInfo.capture_file.fileno(), sys.stdout.fileno())
+    os.dup2(StandardIOInfo.capture_file.fileno(), sys.stderr.fileno())
+    StandardIOInfo.capture = True
+
+
+def stop_capture_console():
+    if StandardIOInfo.capture > 1:
+        StandardIOInfo.capture -= 1
+        return
+    os.dup2(StandardIOInfo.saved_stdout_fd, StandardIOInfo.stdout_fd)
+    os.close(StandardIOInfo.saved_stdout_fd)
+    sys.stdout = StandardIOInfo.old_stdout
+
+    os.dup2(StandardIOInfo.saved_stderr_fd, StandardIOInfo.stderr_fd)
+    os.close(StandardIOInfo.saved_stderr_fd)
+    sys.stderr = StandardIOInfo.old_stderr
+
+    StandardIOInfo.old_stdout = sys.stdout
+    StandardIOInfo.stdout_fd = StandardIOInfo.old_stdout.fileno()
+    StandardIOInfo.saved_stdout_fd = os.dup(StandardIOInfo.stdout_fd)
+
+    StandardIOInfo.old_stderr = sys.stderr
+    StandardIOInfo.stderr_fd = StandardIOInfo.old_stderr.fileno()
+    StandardIOInfo.saved_stderr_fd = os.dup(StandardIOInfo.stderr_fd)
+
+    StandardIOInfo.capture = False
+
+
+def force_print_to_console(message: str, color: str):
+    msg = color + message + Colors.ENDC
+    print(msg)
+    if StandardIOInfo.capture:
+        os.write(StandardIOInfo.saved_stdout_fd, (msg + '\n').encode())
+
+
+def force_print_green_to_console(message: str):
+    force_print_to_console(message, Colors.OKGREEN)
+
+
+def force_print_error_to_console(message: str):
+    force_print_to_console(message, Colors.FAIL)
+
+
+def force_print_warning_to_console(message: str):
+    force_print_to_console(message, Colors.WARNING)
+
+
 def print_with_color(message: str, color: str):
     """
     Print a message with specified color onto console.
     :param message:
     :param color:
     """
-    print(color + message + Colors.ENDC)
+    msg = color + message + Colors.ENDC
+    print(msg)
 
 
 def print_error(message: str):
@@ -56,13 +124,17 @@ def print_ok_blue(message: str):
     print_with_color(message, Colors.OKBLUE)
 
 
+def print_warning(message: str):
+    print_with_color(message, Colors.WARNING)
+
+
 def print_header_for_step(message: str):
     print_header("\n======= {} =======".format(message))
 
 
 def generate_random_string(
         prefix="", suffix="", size=20,
-        characters: str=string.ascii_uppercase + string.digits):
+        characters: str = string.ascii_uppercase + string.digits):
     """
     Generate random string .
     :param prefix:  (optional) Prefix of a string.
@@ -102,3 +174,34 @@ def create_folder(folder):
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise e
+
+
+def parse_config():
+    import json
+
+    config_file = os.path.join(os.path.dirname(__file__), 'config.json')
+
+    config_as_dict = json.load(open(config_file))
+
+    class Config:
+        pass
+
+    Config.pool_genesis_file = config_as_dict['pool_genesis_file']
+    Config.pool_name = config_as_dict['pool_name']
+    Config.wallet_name = config_as_dict['wallet_name']
+
+    return Config
+
+
+def print_client_result(passed_req, failed_req, elapsed_time):
+    force_print_warning_to_console("\nTotal: %d" % (failed_req +
+                                                    passed_req))
+    force_print_green_to_console("Passed: %d" % passed_req)
+    force_print_error_to_console("Failed: %d\n" % failed_req)
+
+    hours = elapsed_time / 3600
+    elapsed_time = 3600 * hours
+    minutes = elapsed_time / 60 % 60
+    seconds = elapsed_time % 60
+    print("\n------ Elapsed time: %dh:%dm:%ds" % (
+        hours, minutes, seconds) + " ------")
