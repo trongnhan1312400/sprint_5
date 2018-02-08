@@ -161,7 +161,7 @@ class PerformanceTestRunner:
               file=result_file)
         print("\n Total failed transactions = " + str(self.failed_req),
               file=result_file)
-        print("\nAverage time of a transaction = "
+        print("\n Average time of a transaction = "
               + str((self.finish_time - self.start_time) / ttl_txns),
               file=result_file)
         print("\n Estimated transactions per second = " + str(txns_per_second),

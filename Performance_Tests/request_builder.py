@@ -66,7 +66,6 @@ class RequestBuilder:
                 for line in data_file:
                     if str(line) == '\n':
                         continue
-                    utils.force_print_error_to_console(str(line) + "AAA")
                     req = await req_builder(args, json.dumps(line))
                     if file_iter >= number_of_file:
                         file_iter = 0
