@@ -1,0 +1,5 @@
+{
+  "pool_genesis_file": "/var/lib/indy/sandbox/pool_transactions_sandbox_genesis",
+  "pool_name": "testPool",
+  "wallet_name": "testWallet"
+}

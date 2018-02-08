@@ -1,53 +1,49 @@
 import os
+import sys
 import json
-import time
-import argparse
+import glob
 import utils
-import threading
 import request_builder
 import requests_sender
+import argparse
 from indy import signus, wallet, pool
 from indy.error import IndyError
 
 
-# The genesis pool transaction file and the
-# script (perf_add_requests.py) should both
-# be in the same directory.
-# To run, make sure to pass the key to use when creating the DIDs, for
-# example: python3.6 perf_add_requests.py
-# testPool 100 TestAddNodeWithTrustAnchor000001
-#          python3.6 perf_add_requests.py testPool 500
-# 000000000000000000000000Steward1 <number_of_threads>
-# -----------------------------------------------------------------------------
+# Run this script to process output from the .txt output from
+# perf_add_requests.py or the add_nyms.py file.  This script will run the
+# getting request command on all the requests info found in the .txt output
+# files. The .txt files that used by this script should be stored in a
+# subdirectory in the same location this script is running from.
+# The command line options allow the user to specify the location of the text
+# files to process, the location of the genesis transaction file and the name
+# of the genesis transaction file.
+# If these options are not specified, default values will be used.
 
-class Option:
+# Examples:
+# specify the location for a genesis transaction file:
+#   python3.6 Perf_get_nyms.py -t ~/PycharmProjects/multithread/stability_pool
+# specify the directory name that contains the NYM files to process:
+#     python3.6 Perf_get_nyms.py -d /home/devone/PycharmProjects/multithread
+# specify the name of the genesis transaction file:
+#     python3.6 Perf_get_nyms.py -g test_file
+
+
+class Options:
     def __init__(self):
         parser = argparse.ArgumentParser(
-            description='Script to create multiple requests '
-                        'and store their info in .txt files to be  '
-                        'used by the \'perf_get_requests.py\' script.\n\n',
-            usage='To create 500 NYMs in the default \'request_info\' directory '
-                  'and use \nthe default \'stability_pool\' transaction file '
-                  'in the current working directory, '
-                  '\nuse: python3.6 perf_add_requests.py -p '
-                  'testPool -n 500 -i 000000000000000000000000Steward1 -s 1')
+            description='Script to feed multiple NYMs from files created '
+                        'by the \'perf_add_requests.py\'')
 
         parser.add_argument('-d',
-                            help='Specify the directory location to store '
-                                 'information of sent request as .txt files.  '
-                                 'The default directory is set to the '
-                                 'directory in this scripts '
-                                 'current working '
+                            help='Specify the directory that contains the .txt'
+                                 ' files with requests info.  The default '
+                                 'directory is set to the "request_info" '
+                                 'directory in the scripts current working '
                                  'directory.', action='store',
                             default=os.path.join(os.path.dirname(__file__),
                                                  "request_info"),
                             dest='info_dir')
-
-        parser.add_argument('-n',
-                            help='Specify the number of requests to be '
-                                 'created.  The default value will be 100',
-                            action='store', type=int, default=100,
-                            dest='number_of_requests')
 
         parser.add_argument('-k',
                             help='Kind of request to be sent. '
@@ -56,128 +52,119 @@ class Option:
                             choices=['nym', 'schema', 'attribute', 'claim'],
                             default='nym', dest='kind')
 
-        parser.add_argument('-i',
-                            help='Specify the role to use to create the NYMs. '
-                                 ' The default trustee ID will be  used',
-                            action='store',
-                            default='000000000000000000000000Steward1',
-                            dest='seed')
+        parser.add_argument('-b',
+                            help='To see additional output,'
+                                 ' set debug output to true',
+                            action='store_true', default=False,
+                            dest='debug')
 
         parser.add_argument('-s',
                             help='Specify the number of threads'
                                  'The default value will be 1', action='store',
                             type=int, default=1, dest='thread_num')
 
-        parser.add_argument('-b',
-                            help='To see additional output, use -b in addition'
-                                 ' to the other command line options',
-                            action='store_true', default=False,
-                            dest='debug')
-
         parser.add_argument('-l',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
-                            action='store_true', default=False, dest='log')
+                            action='store_true', default=False)
 
         self.args = parser.parse_args()
 
 
-class PerformanceTesterForAddingRequest:
-    def __init__(self, info_dir=os.path.dirname(__file__),
-                 request_num=100, request_kind='nym',
-                 seed='000000000000000000000000Trustee1', thread_num=1,
-                 debug=False, log=False):
-        self.config = utils.parse_config()
-
-        self.info_dir = os.path.join(info_dir, request_kind)
-        self.req_num = request_num
-        self.req_kind = request_kind
-        self.log = log
-        self.seed = seed
+class PerformanceTesterGetSentRequestFromLedger:
+    def __init__(self, info_dir=os.path.join(os.path.dirname(__file__),
+                                             "request_info"),
+                 kind='nym', thread_num=1, debug=False, log=False):
         if thread_num <= 0:
             self.thread_num = 1
         else:
             self.thread_num = thread_num
+        self.info_dir = info_dir
+        self.req_kind = kind
         self.debug = debug
+        self.config = utils.parse_config()
         self.pool_handle = self.wallet_handle = 0
-        self.submitter_did = ""
+        self.submitter_did = ''
+        self.seed = '000000000000000000000000Steward1'
+        self.log = log
 
-        self.info_file_path = "{}_{}_{}.txt".format(
-            self.req_kind + "_requests_info", str(threading.get_ident()),
-            time.strftime("%d-%m-%Y_%H-%M-%S"))
-
-        self.info_file_path = os.path.join(self.info_dir,
-                                           self.info_file_path)
-        self.req_info = list()
         self.threads = list()
-
-        self.passed_req = self.failed_req = 0
+        self.works_per_threads = list()
+        self.lst_req_info = list()
         self.start_time = self.finish_time = 0
+        self.passed_req = self.failed_req = 0
         self.pool_name = utils.generate_random_string(prefix="pool")
         self.wallet_name = utils.generate_random_string(prefix='wallet')
 
-        utils.create_folder(self.info_dir)
-
     async def test(self):
+        """  Process to run the Ger NYMs command """
+
+        infor_files = self.__collect_requests_info_files()
 
         if self.debug:
+            print("\n\n" + 50 * "-")
             print("Pool name: %s" % self.pool_name)
-            print("Number of NYMs to create: %s" % str(self.req_num))
-            print("Key to use %s" % str(self.seed))
-            print("Thread Number %d" % self.thread_num)
-            print("Where the requests info are stored: " + self.info_file_path)
-            print(
-                "Name and location of the genesis file: " +
-                self.config.pool_genesis_file)
-            input("Wait.........")
+            print("Key to use: %s" % str(self.seed))
+            print("Directory to use: " + self.info_dir)
+            print("Path to genesis transaction file: " +
+                  str(self.config.pool_genesis_file))
+            print(50 * '-')
+            # print("Thread Number %d" % repr(threadnum))
+            # input("Wait.........")
 
-        # 1. Create pool config.
+        # 1. Create ledger config from genesis txn file
         await self.__create_pool_config()
 
-        # 2. Open pool ledger
+        # 2. Open pool
         await self.__open_pool()
 
         # 3. Create My Wallet and Get Wallet Handle
         await self.__create_wallet()
         await self.__open_wallet()
 
-        if self.debug:
-            print("Wallet:  %s" % str(self.wallet_handle))
-
-        # 4 Create and sender DID
+        # 4. Create the DID to use
         await self.__create_submitter_did()
 
-        if self.debug:
-            print("Their DID: %s" % str(self.submitter_did))
-
-        args = {'wallet_handle': self.wallet_handle,
+        args = {'submitter_did': self.submitter_did,
                 'pool_handle': self.pool_handle,
-                'submitter_did': self.submitter_did}
+                'wallet_handle': self.wallet_handle}
 
-        # 5. Build requests and save them in to files.
-        builder = request_builder.RequestBuilder(self.info_file_path,
-                                                 self.log)
+        # 5. Build getting request from info from files.
+        builder = request_builder.RequestBuilder(None, self.log)
+        req_files = await builder.build_several_getting_req_to_files(
+            args, self.req_kind, self.thread_num, infor_files)
 
-        req_files = await builder.build_several_adding_req_to_files(
-            args, self.req_kind, self.thread_num, self.req_num)
-
-        # 6. Sign and submit several request into ledger.
+        # 6. Submit getting request to ledger.
         sender = requests_sender.RequestsSender(self.log)
         try:
-            await sender.sign_and_submit_several_reqs_from_files(
-            args, req_files, self.req_kind)
+            await sender.submit_several_reqs_from_files(args, req_files,
+                                                    self.req_kind)
         except Exception:
             pass
-        self.passed_req, self.failed_req = sender.passed_req, sender.failed_req
 
+        self.passed_req, self.failed_req = sender.passed_req, sender.failed_req
         self.start_time, self.finish_time = (sender.start_time,
                                              sender.finish_time)
 
+        # 7. Run the cleanup
         await self.__close_pool_and_wallet()
-        utils.print_header("\n\t======== Finished ========")
+
+        utils.print_header('\n\t========= Finish =========')
 
     def get_elapsed_time(self):
         return self.finish_time - self.start_time
+
+    def __collect_requests_info_files(self):
+
+        lst_files = glob.glob(os.path.join(
+            self.info_dir, '{}_requests_info*{}'.format(self.req_kind,
+                                                        '.txt')))
+        if not lst_files:
+            utils.print_error('Cannot found any request info. '
+                              'Skip sending get request... Abort')
+            sys.exit(1)
+
+        return lst_files
 
     async def __create_pool_config(self):
         try:
@@ -276,15 +263,15 @@ class PerformanceTesterForAddingRequest:
 
 
 if __name__ == '__main__':
-    options = Option()
+    options = Options()
     args = options.args
-    tester = PerformanceTesterForAddingRequest(
-        args.info_dir, args.number_of_requests, args.kind, args.seed,
-        args.thread_num, args.debug, args.log)
+    tester = PerformanceTesterGetSentRequestFromLedger(args.info_dir,
+                                                       args.kind,
+                                                       args.thread_num,
+                                                       args.debug, args.l)
 
-    utils.run_async_method(None, tester.test)
-
-    elapsed_time = tester.finish_time - tester.start_time
+    # Start the method
+    elapsed_time = utils.run_async_method(None, tester.test)
 
     utils.print_client_result(tester.passed_req, tester.failed_req,
                               elapsed_time)
