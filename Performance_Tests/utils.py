@@ -187,8 +187,6 @@ def parse_config():
         pass
 
     Config.pool_genesis_file = config_as_dict['pool_genesis_file']
-    Config.pool_name = config_as_dict['pool_name']
-    Config.wallet_name = config_as_dict['wallet_name']
 
     return Config
 
