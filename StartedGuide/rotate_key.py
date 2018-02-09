@@ -2,8 +2,7 @@
 Created on January 30, 2018
 @author: khoi.ngo
 
-For writing a new schema in the ledger, a person or an organization in that
-ledger must have one of these roles: Trustee, Steward or Trust Anchor.
+All SDK users can change their own verkey.
 (https://docs.google.com/spreadsheets/d/1TWXF7NtBjSOaUIBeIH77SyZnawfo91cJ_ns4TR-wsq4/edit#gid=0)
 
 This script will setup an environment with a pool (from genesis_txn file),
@@ -32,14 +31,18 @@ Refer to below for detail steps.
           The pair of keys will be used to make a request on step 6.
 
 * Build and submit nym request to the ledger.
-  Step 6. Prepare data and build the schema_request.
-  Step 7. Submit the schema request and get the response.
-          The new Trust Anchor is created.
+  Step 6. Prepare data and build the nym request.
+  Step 7. Send the nym request and get the response.
 
 * Rotate key
   Step 8. Generates new keys for trust_anchor did and saves it as a new verkey.
-  Step 9. Apply new verkey as main for trust_anchor did.
-  Step 10. Get verkey in wallet to make sure it was changed.
+  Step 9. Build a NYM request to update verkey on ledger.
+  Step 10. Sign and submit built NYM request to ledger.
+  Step 11. Apply new verkey as main for trust_anchor did.
+  Step 12. Get verkey in wallet to make sure it was changed.
+  Step 13. Build get NYM request to get verkey from ledger.
+  Step 14. Submit built get NYM request and take verkey from response.
+  Step 15. Verify that verkey in wallet is equal with verkey in ledger.
 '''
 
 import asyncio
@@ -47,7 +50,6 @@ import json
 import shutil
 
 from indy import wallet, signus, pool, ledger
-from indy.error import IndyError
 
 
 class Variables:
@@ -66,6 +68,12 @@ def print_log(value_color):
     OKGREEN = '\033[92m'
     ENDC = '\033[0m'
     print(OKGREEN + "\n" + value_color + ENDC)
+
+
+def print_error(message):
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    print(FAIL + "\n" + message + ENDC)
 
 
 async def build_schema_request():
@@ -115,8 +123,8 @@ async def build_schema_request():
 
         (default_steward_did, _) = \
             await signus.create_and_store_my_did(
-                    Variables.wallet_handle, json.dumps(
-                        {"seed": seed_default_steward}))
+                Variables.wallet_handle, json.dumps(
+                    {"seed": seed_default_steward}))
         print_log("DONE - Steward[%s]" % (default_steward_did))
         (did, verkey) = \
             await signus.create_and_store_my_did(
@@ -128,44 +136,90 @@ async def build_schema_request():
         print_log("6. Build a nym request. Using default Steward "
                   "create Trust Anchor")
         nym_txn_req = await ledger.build_nym_request(
-                                            default_steward_did,
-                                            did, verkey, None, "TRUST_ANCHOR")
+            default_steward_did,
+            did, verkey, None, "TRUST_ANCHOR")
         print_log("DONE - nym_txn_req: " + str(nym_txn_req))
 
         # 7. Send the nym request and get the response.
         print_log("7. Send the nym request to the pool ledger")
         result = await ledger.sign_and_submit_request(
-                                            Variables.pool_handle,
-                                            Variables.wallet_handle,
-                                            default_steward_did, nym_txn_req)
+            Variables.pool_handle,
+            Variables.wallet_handle,
+            default_steward_did, nym_txn_req)
         print_log("DONE - Result: " + str(result))
 
         # 8. Generates new keys for trust_anchor did and saves it
         # as a new verkey.
         print_log("8. Change verkey of trust anchor")
         new_verkey = await signus.replace_keys_start(
-                                            Variables.wallet_handle,
-                                            did, json.dumps({}))
+            Variables.wallet_handle,
+            did, json.dumps({}))
         print_log("DONE - new verkey of trust anchor [%s]" % (new_verkey))
 
-        # 9. Apply new verkey as main for trust_anchor did.
+        # 9. Build NYM request to update new verkey to ledger.
+        print_log("11. Build NYM request to update new verkey to ledger")
+        nym_req = await ledger.build_nym_request(did, did, new_verkey, None,
+                                                 'TRUST_ANCHOR')
+        print_log('NYM request:\n{}'.format(nym_req))
+
+        # 10. Sign and submit nym request to ledger.
+        print_log("12. Sign and submit nym request to ledger")
+        nym_response = await ledger.sign_and_submit_request(
+            Variables.pool_handle, Variables.wallet_handle, did, nym_req)
+
+        print_log('NYM response:\n{}'.format(nym_response))
+
+        # 11. Apply new verkey as main for trust_anchor did.
         print_log("9. Apply new verkey")
         await signus.replace_keys_apply(Variables.wallet_handle, did)
         print_log("DONE")
 
-        # 10. Get verkey in wallet to make sure it was changed.
+        # 12. Get verkey in wallet to make sure it was changed.
         print_log("10. Get verkey in wallet")
         verkey_in_wallet = await signus.key_for_local_did(
-                                                Variables.wallet_handle, did)
-        print_log("DONE - verkey in wallet was changed: " +
-                  str(verkey_in_wallet))
+            Variables.wallet_handle, did)
+        if verkey_in_wallet != verkey and verkey_in_wallet == new_verkey:
+            print_log("DONE - verkey in wallet was changed: " +
+                      str(verkey_in_wallet))
+        else:
+            err = 'FAIL - verkey in wallet was not changed: {}'.format(
+                verkey_in_wallet)
+            print_error(err)
+            raise ValueError(err)
 
-    except IndyError as E:
-        print(str(E))
+        # 13. Build get NYM request to get verkey from ledger.
+        print_log('13. Build get NYM request to get verkey from ledger')
+        get_nym_rq = await ledger.build_get_nym_request(did, did)
+
+        print_log('DONE - created get NYM request:\n{}'.format(get_nym_rq))
+
+        # 14. Submit built get NYM request and take verkey from response.
+        print_log('14. Submit built get NYM request '
+                  'and take verkey from response')
+        gotten_nym = await ledger.submit_request(Variables.pool_handle,
+                                                 get_nym_rq)
+
+        print_log('DONE - gotten nym:\n{}'.format(gotten_nym))
+
+        verkey_in_ledger = json.loads(json.loads(gotten_nym)['result']
+                                      ['data'])['verkey']
+
+        # 15. Verify that verkey in wallet is equal with verkey in ledger.
+        if verkey_in_ledger != verkey and verkey_in_ledger == verkey_in_wallet:
+            print_log("DONE - verkey in ledger was changed: " +
+                      str(verkey_in_ledger))
+        else:
+            err = 'FAIL - verkey in ledfer was not changed: {}'.format(
+                verkey_in_ledger)
+            print_error(err)
+            raise ValueError(err)
+
+    except Exception as e:
+        print_error(str(e))
 
 
 def clean_up():
-    """  clean up the .indy/pool and .indy/wallet directories  """
+    """  Clean up the .indy/pool and .indy/wallet directories  """
     import os
     x = os.path.expanduser('~')
     work_dir = x + os.sep + ".indy_client"
@@ -185,5 +239,5 @@ def clean_up():
 loop = asyncio.get_event_loop()
 loop.run_until_complete(build_schema_request())
 
-# close the loop instance
+# Close the loop instance
 loop.close()

@@ -3,7 +3,7 @@ import sys
 import json
 import glob
 import utils
-import request_builder
+import requests_builder
 import requests_sender
 import argparse
 from indy import signus, wallet, pool
@@ -130,7 +130,7 @@ class PerformanceTesterGetSentRequestFromLedger:
                 'wallet_handle': self.wallet_handle}
 
         # 5. Build getting request from info from files.
-        builder = request_builder.RequestBuilder(None, self.log)
+        builder = requests_builder.RequestBuilder(None, self.log)
         req_files = await builder.build_several_getting_req_to_files(
             args, self.req_kind, self.thread_num, infor_files)
 
@@ -138,7 +138,7 @@ class PerformanceTesterGetSentRequestFromLedger:
         sender = requests_sender.RequestsSender(self.log)
         try:
             await sender.submit_several_reqs_from_files(args, req_files,
-                                                    self.req_kind)
+                                                        self.req_kind)
         except Exception:
             pass
 
