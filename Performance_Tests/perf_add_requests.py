@@ -4,7 +4,7 @@ import time
 import argparse
 import utils
 import threading
-import request_builder
+import requests_builder
 import requests_sender
 from indy import signus, wallet, pool
 from indy.error import IndyError
@@ -155,8 +155,8 @@ class PerformanceTesterForAddingRequest:
                 'submitter_did': self.submitter_did}
 
         # 5. Build requests and save them in to files.
-        builder = request_builder.RequestBuilder(self.info_file_path,
-                                                 self.log)
+        builder = requests_builder.RequestBuilder(self.info_file_path,
+                                                  self.log)
 
         req_files = await builder.build_several_adding_req_to_files(
             args, self.req_kind, self.thread_num, self.req_num)
