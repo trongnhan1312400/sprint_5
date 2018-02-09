@@ -139,7 +139,7 @@ async def build_claim_def_request():
 
 
 def clean_up():
-    """  clean up the .indy/pool and .indy/wallet directories  """
+    """  Clean up the .indy/pool and .indy/wallet directories  """
     import os
     x = os.path.expanduser('~')
     work_dir = x + os.sep + ".indy_client"
@@ -159,5 +159,5 @@ def clean_up():
 loop = asyncio.get_event_loop()
 loop.run_until_complete(build_claim_def_request())
 
-# close the loop instance
+# Close the loop instance
 loop.close()
