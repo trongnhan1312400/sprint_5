@@ -2,14 +2,14 @@
 Created on January 30, 2018
 @author: khoi.ngo
 
-For updating role of an user in the ledger, a person or an organization in that
+For writing a new schema in the ledger, a person or an organization in that
 ledger must have one of these roles: Trustee, Steward or Trust Anchor.
 (https://docs.google.com/spreadsheets/d/1TWXF7NtBjSOaUIBeIH77SyZnawfo91cJ_ns4TR-wsq4/edit#gid=0)
 
 This script will setup an environment with a pool (from genesis_txn file),
 a wallet inside that pool and get the default Steward DID
 (what was added to the ledger during setup). Using that default Steward
-to create a Trust Anchor.
+to build a schema request. Then submit it to the ledger.
 Refer to below for detail steps.
 
 * Setup an environment:
@@ -28,15 +28,13 @@ Refer to below for detail steps.
   it is a default test Steward that happens during setup.
   We will use this Steward to send the schema request
   without creating a new one.
-  Step 5. Create then store DID and Verkey of seed_default_steward
-          and seed_trust_anchor.
-          The pair of keys of seed_default_steward will be used to make
-          a request on step 6.
+  Step 5. Create then store DID and Verkey of seed_default_steward.
+          The pair of keys will be used to make a request on step 6.
 
-* Build and submit nym request to the ledger.
-  Step 6. Build a nym request. Using default Steward create Trust Anchor
-  Step 7. Submit the nym request and get the response.
-          The new Trust Anchor is created.
+* Build and submit schema request to the ledger.
+  Step 6. Prepare data and build the schema_request.
+  Step 7. Submit the schema request and get the response.
+          The new schema is written to the ledger.
 '''
 
 import asyncio
@@ -53,10 +51,9 @@ class Variables:
     # Set a new seed_trustee with exactly 32 characters.
     pool_handle = 0
     wallet_handle = 0
-    pool_name = "Evenym_pool"
-    wallet_name = "Evernym_wallet"
+    pool_name = "Evenym_pool1"
+    wallet_name = "Evernym_wallet1"
     pool_txn = "/var/lib/indy/sandbox/pool_transactions_sandbox_genesis"
-    seed_trustanchor = "TestTrustAnchor00000000000000000"
 
 
 def print_log(value_color):
@@ -66,7 +63,7 @@ def print_log(value_color):
     print(OKGREEN + "\n" + value_color + ENDC)
 
 
-async def build_nym_request():
+async def build_schema_request():
     try:
         # 0. Clean up the .indy/pool and .indy/wallet directories. We should
         #    do this step to avoid IndyError.PoolLedgerConfigAlreadyExistsError
@@ -81,7 +78,6 @@ async def build_nym_request():
         pool_config = json.dumps({"genesis_txn": str(Variables.pool_txn)})
         await pool.create_pool_ledger_config(Variables.pool_name, pool_config)
         print_log("DONE")
-
         # 2. Open pool ledger to get the pool handle via pool name.
         # The returned pool handle is used in methods that require pool
         # connection
@@ -105,30 +101,30 @@ async def build_nym_request():
             None, None)
         print_log("DONE - Wallet_handle: " + str(Variables.wallet_handle))
 
-        # 5. Create then store DID and verkey of seed_default_steward,
-        # seed_trustanchor. Steward DID with a verkey were already added
-        # in the ledger with STEWARD role.
+        # 5. Create then store DID and verkey of seed_default_steward.
+        # This DID and verkey were already added in the ledger
+        # with STEWARD role.
         print_log("5. Create then store steward DID and verkey "
                   "(for verification of signature)")
-        seed_default_steward = "000000000000000000000000Steward1"
+        seed_default_steward = "000000000000000000000000Trustee1"
 
-        (default_steward_did, _) = await signus.create_and_store_my_did(
+        (default_steward_did, _) = \
+            await signus.create_and_store_my_did(
                     Variables.wallet_handle, json.dumps(
                         {"seed": seed_default_steward}))
-        (trust_anchor_did, trust_anchor_verkey) = \
+        print_log("DONE - Steward[%s]" % (default_steward_did))
+        (did, verkey) = \
             await signus.create_and_store_my_did(
                 Variables.wallet_handle, json.dumps({}))
-        print_log("DONE - Trust_Anchor[%s][%s]" % (trust_anchor_did,
-                                                   trust_anchor_verkey))
+        print_log("DONE - Trust_Anchor[%s][%s]" % (did,
+                                                   verkey))
 
         # 6. Prepare data and build the nym request.
         print_log("6. Build a nym request. Using default Steward "
                   "create Trust Anchor")
         nym_txn_req = await ledger.build_nym_request(
                                             default_steward_did,
-                                            trust_anchor_did,
-                                            trust_anchor_verkey, None,
-                                            "TRUST_ANCHOR")
+                                            did, verkey, None, "TRUST_ANCHOR")
         print_log("DONE - nym_txn_req: " + str(nym_txn_req))
 
         # 7. Send the nym request and get the response.
@@ -138,6 +134,26 @@ async def build_nym_request():
                                             Variables.wallet_handle,
                                             default_steward_did, nym_txn_req)
         print_log("DONE - Result: " + str(result))
+
+        # 8. Change verkey of trust anchor
+        print_log("8. Change verkey of trust anchor")
+        new_verkey = await signus.replace_keys_start(
+                                            Variables.wallet_handle,
+                                            did, json.dumps({}))
+        print_log("DONE - new verkey of trust anchor [%s]" % (new_verkey))
+
+        # 9. Apply new verkey
+        print_log("9. Apply new verkey")
+        await signus.replace_keys_apply(Variables.wallet_handle, did)
+        print_log("DONE")
+
+        # 10. Get verkey in wallet
+        print_log("10. Get verkey in wallet")
+        verkey_in_wallet = await signus.key_for_local_did(
+                                                Variables.wallet_handle, did)
+        print_log("DONE - verkey in wallet was changed: " +
+                  str(verkey_in_wallet))
+
     except IndyError as E:
         print(str(E))
 
@@ -161,7 +177,7 @@ def clean_up():
 
 # Create the loop instance using asyncio
 loop = asyncio.get_event_loop()
-loop.run_until_complete(build_nym_request())
+loop.run_until_complete(build_schema_request())
 
 # close the loop instance
 loop.close()
