@@ -9,7 +9,7 @@ ledger must have one of these roles: Trustee, Steward or Trust Anchor.
 This script will setup an environment with a pool (from genesis_txn file),
 a wallet inside that pool and get the default Steward DID
 (what was added to the ledger during setup). Using that default Steward
-to build a schema request. Then submit it to the ledger.
+to create a Trust Anchor. Then rotating key for the new trust anchor.
 Refer to below for detail steps.
 
 * Setup an environment:
@@ -31,10 +31,15 @@ Refer to below for detail steps.
   Step 5. Create then store DID and Verkey of seed_default_steward.
           The pair of keys will be used to make a request on step 6.
 
-* Build and submit schema request to the ledger.
+* Build and submit nym request to the ledger.
   Step 6. Prepare data and build the schema_request.
   Step 7. Submit the schema request and get the response.
-          The new schema is written to the ledger.
+          The new Trust Anchor is created.
+
+* Rotate key
+  Step 8. Generates new keys for trust_anchor did and saves it as a new verkey.
+  Step 9. Apply new verkey as main for trust_anchor did.
+  Step 10. Get verkey in wallet to make sure it was changed.
 '''
 
 import asyncio
@@ -101,9 +106,9 @@ async def build_schema_request():
             None, None)
         print_log("DONE - Wallet_handle: " + str(Variables.wallet_handle))
 
-        # 5. Create then store DID and verkey of seed_default_steward.
-        # This DID and verkey were already added in the ledger
-        # with STEWARD role.
+        # 5. Create then store DID and verkey of seed_default_steward,
+        # the trust anchor.Steward DID with a verkey were already added
+        # in the ledger with STEWARD role.
         print_log("5. Create then store steward DID and verkey "
                   "(for verification of signature)")
         seed_default_steward = "000000000000000000000000Trustee1"
@@ -135,19 +140,20 @@ async def build_schema_request():
                                             default_steward_did, nym_txn_req)
         print_log("DONE - Result: " + str(result))
 
-        # 8. Change verkey of trust anchor
+        # 8. Generates new keys for trust_anchor did and saves it
+        # as a new verkey.
         print_log("8. Change verkey of trust anchor")
         new_verkey = await signus.replace_keys_start(
                                             Variables.wallet_handle,
                                             did, json.dumps({}))
         print_log("DONE - new verkey of trust anchor [%s]" % (new_verkey))
 
-        # 9. Apply new verkey
+        # 9. Apply new verkey as main for trust_anchor did.
         print_log("9. Apply new verkey")
         await signus.replace_keys_apply(Variables.wallet_handle, did)
         print_log("DONE")
 
-        # 10. Get verkey in wallet
+        # 10. Get verkey in wallet to make sure it was changed.
         print_log("10. Get verkey in wallet")
         verkey_in_wallet = await signus.key_for_local_did(
                                                 Variables.wallet_handle, did)
