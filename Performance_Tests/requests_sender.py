@@ -21,11 +21,20 @@ class RequestsSender:
                 '\nSubmit {} request '
                 'successfully with response:\n{}'.format(kind, response))
 
-    def print_error_msg(self, kind, request):
+    @staticmethod
+    def print_error_msg(kind, request):
         utils.force_print_error_to_console(
             '\nCannot submit {} request:\n{}'.format(kind, request))
 
     def sign_and_submit_several_reqs_from_files(self, args, files, kind):
+        """
+        Sign and submit several request that stored in files.
+
+        :param args: arguments to sign and submit requests.
+        :param files: return by
+        request_builder.RequestBuilder.build_several_adding_req_to_files
+        :param kind: kind of request.
+        """
         threads = list()
         utils.print_header('\n\tSigning and submitting {} requests...'
                            .format(kind))
@@ -48,6 +57,13 @@ class RequestsSender:
         utils.print_header('\n\tSubmitting requests complete')
 
     def sign_and_submit_reqs_in_thread(self, args, file, kind):
+        """
+        Thread function that sign and submit request from one request file.
+
+        :param args: arguments to sign and submit requests.
+        :param file: request file (store all request you want to submit).
+        :param kind: kind of request.
+        """
         with open(file, "r") as req_file:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -55,12 +71,21 @@ class RequestsSender:
                 utils.run_async_method(loop, self.sign_and_submit_req, args,
                                        kind, line)
 
+            loop.close()
+
         try:
             os.remove(file)
         except IOError:
             pass
 
     async def sign_and_submit_req(self, args, kind, data):
+        """
+        Sign and submit one request to ledger.
+
+        :param args: arguments to sign and submit requests.
+        :param kind: kind of request.
+        :param data: request info.
+        """
         wallet_handle = args['wallet_handle']
         pool_handle = args['pool_handle']
         submitter_did = args['submitter_did']
@@ -84,6 +109,14 @@ class RequestsSender:
             self.failed_req += 1
 
     def submit_several_reqs_from_files(self, args, files, kind):
+        """
+        Submit several request that stored in files.
+
+        :param args: arguments to submit requests.
+        :param files: return by
+        request_builder.RequestBuilder.build_several_adding_req_to_files
+        :param kind: kind of request.
+        """
         threads = list()
         utils.print_header('\n\tSubmitting {} requests...'
                            .format(kind))
@@ -106,19 +139,34 @@ class RequestsSender:
         utils.print_header('\n\tSubmitting requests complete')
 
     def submit_reqs_in_thread(self, args, file, kind):
+        """
+        Thread function that submit request from one request file.
+
+        :param args: arguments to submit requests.
+        :param file: request file (store all request you want to submit).
+        :param kind: kind of request.
+        """
         with open(file, "r") as req_file:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             for line in req_file:
                 utils.run_async_method(loop, self.submit_req, args,
                                        kind, line)
-
+            loop.close()
         try:
             os.remove(file)
         except IOError:
             pass
 
     async def submit_req(self, args, kind, data):
+        """
+        Submit one request to ledger.
+
+        :param args: arguments to submit requests.
+        :param kind: kind of request.
+        :param data: request info.
+        :return:
+        """
         pool_handle = args['pool_handle']
 
         req = data

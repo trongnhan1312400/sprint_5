@@ -14,8 +14,19 @@ class RequestBuilder:
         utils.create_folder(self.path)
         pass
 
-    async def build_several_adding_req_to_files(self, args, req_kind,
+    async def build_several_adding_req_to_files(self, args: dict, req_kind,
                                                 number_of_file, number_of_req):
+        """
+        Build several ADD request and write them to list of temporary files.
+        :param args: contain all necessary arguments to build a request
+                    (pool_handle, wallet_handle, submitter_did)
+        :param req_kind: kind of ADD request (schema, nym, attribute, claim).
+        :param number_of_file: number of temporary file you want to store
+                               requests. Number of request will be divided
+                               equally among temp files.
+        :param number_of_req: total of requests you want to build.
+        :return: list of temporary file name.
+        """
         utils.print_header("\n\tBuilding several {} requests..."
                            .format(req_kind))
         if not self.log:
@@ -51,6 +62,17 @@ class RequestBuilder:
     async def build_several_getting_req_to_files(self, args, req_kind,
                                                  number_of_file,
                                                  data_files: list):
+        """
+        uild several ADD request and write them to list of temporary files.
+        :param args: contain all necessary arguments to build a request
+                    (pool_handle, wallet_handle, submitter_did)
+        :param req_kind: kind of ADD request (schema, nym, attribute, claim).
+        :param number_of_file: number of temporary file you want to store
+                               requests. Number of request will be divided
+                               equally among temp files.
+        :param data_files: list file that store request information.
+        :return:
+        """
         utils.print_header("\n\tBuilding several get {} requests..."
                            .format(req_kind))
         if not self.log:
@@ -61,6 +83,7 @@ class RequestBuilder:
         files = list()
         lst_opened_files = list()
         file_iter = 0
+
         for data_file_path in data_files:
             with open(data_file_path, 'r') as data_file:
                 for line in data_file:
@@ -91,6 +114,14 @@ class RequestBuilder:
 
     @staticmethod
     def divide(number_of_file, number_of_req):
+        """
+        Divide request to temporary file.
+        If there is 10 request but you just want to divide them fo 3 files.
+        The number of requests in each file are 4, 3, 3.
+        :param number_of_file:
+        :param number_of_req:
+        :return:
+        """
         fixed_works = number_of_req // number_of_file
         extra_works = number_of_req % number_of_file
 
@@ -106,6 +137,12 @@ class RequestBuilder:
 
     @staticmethod
     def get_adding_req_builder(kind):
+        """
+        Get ADD request builder.
+
+        :param kind: kind of request.
+        :return: ADD request builder.
+        """
         if kind == 'nym':
             builder = RequestBuilder.build_nym_req
         elif kind == 'schema':
@@ -121,6 +158,12 @@ class RequestBuilder:
 
     @staticmethod
     def get_getting_req_builder(kind):
+        """
+        Get GET request builder.
+
+        :param kind: kind of request.
+        :return: GET request builder.
+        """
         if kind == 'nym':
             builder = RequestBuilder.build_get_nym_req
         elif kind == 'schema':
@@ -136,6 +179,12 @@ class RequestBuilder:
 
     @staticmethod
     async def build_nym_req(args: dict):
+        """
+        Build ADD nym request.
+
+        :param args: arguments for building ADD nym request.
+        :return: ADD nym request
+        """
         wallet_handle = args['wallet_handle']
         submitter_did = args['submitter_did']
         try:
@@ -159,6 +208,12 @@ class RequestBuilder:
 
     @staticmethod
     async def build_schema_req(args: dict):
+        """
+        Build ADD schema request.
+
+        :param args: arguments for building ADD schema request.
+        :return:
+        """
         submitter_did = args['submitter_did']
         try:
             data = {
@@ -186,6 +241,12 @@ class RequestBuilder:
 
     @staticmethod
     async def build_attribute_req(args: dict):
+        """
+        Build ADD attribute request.
+
+        :param args: arguments to build ADD attribute request.
+        :return: ADD attribute request.
+        """
         pool_handle = args['pool_handle']
         wallet_handle = args['wallet_handle']
         submitter_did = args['submitter_did']
@@ -225,6 +286,12 @@ class RequestBuilder:
 
     @staticmethod
     async def build_claim_req(args: dict):
+        """
+        Build ADD claim request.
+
+        :param args: arguments to build ADD claim request.
+        :return: ADD claim request.
+        """
         import string
         import random
         pool_handle = args['pool_handle']
@@ -265,7 +332,7 @@ class RequestBuilder:
                                    'data': {'issuer_did': did,
                                             'seq_no': seq_no,
                                             'signature_type': signature_type}})
-            req = json.dumps({'request': claim_req})
+            req = json.dumps({'request': claim_req, 'submitter_did': did})
 
             return req, req_info
 
@@ -277,6 +344,13 @@ class RequestBuilder:
 
     @staticmethod
     async def build_get_nym_req(args, data):
+        """
+        Build GET nym request.
+
+        :param args: arguments to build GET nym request.
+        :param data: ADD nym request info.
+        :return: GET nym request.
+        """
         if not data:
             return ''
         data = json.loads(data)
@@ -300,6 +374,14 @@ class RequestBuilder:
 
     @staticmethod
     async def build_get_attribute_req(args, data):
+        """
+        Build GET attribute request.
+
+        :param args: arguments to build GET attribute request.
+        :param data: ADD attribute request info.
+        :return: GET attribute request.
+        """
+
         if not data:
             return ''
         data = json.loads(data)
@@ -324,6 +406,13 @@ class RequestBuilder:
 
     @staticmethod
     async def build_get_schema_req(args, data):
+        """
+        Build GET schema request.
+
+        :param args: arguments to build GET schema request.
+        :param data: ADD schema request info.
+        :return: GET schema request.
+        """
         if not data:
             return ''
         data = json.loads(data)
@@ -349,6 +438,13 @@ class RequestBuilder:
 
     @staticmethod
     async def build_get_claim_req(args, data):
+        """
+        Build GET claim request.
+
+        :param args: arguments to build GET claim request.
+        :param data: ADD claim request info.
+        :return: GET claim request.
+        """
         if not data:
             return ''
         data = json.loads(data)
@@ -362,10 +458,8 @@ class RequestBuilder:
             issuer_did = data['data']['issuer_did']
             seq_no = data['data']['seq_no']
             signature_type = data['data']['signature_type']
-            get_claim_req = await ledger.build_get_claim_def_txn(submitter_did,
-                                                                 seq_no,
-                                                                 signature_type,
-                                                                 issuer_did)
+            get_claim_req = await ledger.build_get_claim_def_txn(
+                submitter_did, seq_no, signature_type, issuer_did)
 
             return get_claim_req
         except Exception as e:

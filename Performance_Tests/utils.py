@@ -6,7 +6,8 @@ import tempfile
 
 
 class Colors:
-    """ Class to set the colors for text.  Syntax:  print(Colors.OKGREEN +"TEXT HERE" +Colors.ENDC) """
+    """ Class to set the colors for text.
+    Syntax:  print(Colors.OKGREEN +"TEXT HERE" +Colors.ENDC) """
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -30,6 +31,11 @@ class StandardIOInfo:
 
 
 def start_capture_console():
+    """
+    Start capture log in console.
+
+    :return: the file that log in console is written.
+    """
     if StandardIOInfo.capture > 0:
         StandardIOInfo.capture += 1
         return None
@@ -37,10 +43,12 @@ def start_capture_console():
     StandardIOInfo.capture_file = tempfile.TemporaryFile("w")
     os.dup2(StandardIOInfo.capture_file.fileno(), sys.stdout.fileno())
     os.dup2(StandardIOInfo.capture_file.fileno(), sys.stderr.fileno())
-    StandardIOInfo.capture = True
 
 
 def stop_capture_console():
+    """
+    Stop capture log on console to file.
+    """
     if StandardIOInfo.capture > 1:
         StandardIOInfo.capture -= 1
         return
@@ -60,10 +68,16 @@ def stop_capture_console():
     StandardIOInfo.stderr_fd = StandardIOInfo.old_stderr.fileno()
     StandardIOInfo.saved_stderr_fd = os.dup(StandardIOInfo.stderr_fd)
 
-    StandardIOInfo.capture = False
+    StandardIOInfo.capture -= 1
 
 
 def force_print_to_console(message: str, color: str):
+    """
+    Force print a message to console (no matter log is captured or not).
+
+    :param message:
+    :param color:
+    """
     msg = color + message + Colors.ENDC
     print(msg)
     if StandardIOInfo.capture:
@@ -71,14 +85,29 @@ def force_print_to_console(message: str, color: str):
 
 
 def force_print_green_to_console(message: str):
+    """
+    Force print a message with green color to console
+    (no matter log is captured or not).
+    :param message:
+    """
     force_print_to_console(message, Colors.OKGREEN)
 
 
 def force_print_error_to_console(message: str):
+    """
+    Force print a message with red color to console
+    (no matter log is captured or not).
+    :param message:
+    """
     force_print_to_console(message, Colors.FAIL)
 
 
 def force_print_warning_to_console(message: str):
+    """
+    Force print a message with yellow color to console
+    (no matter log is captured or not).
+    :param message:
+    """
     force_print_to_console(message, Colors.WARNING)
 
 
@@ -125,10 +154,18 @@ def print_ok_blue(message: str):
 
 
 def print_warning(message: str):
+    """
+    Print message onto console with yellow color.
+    :param message:
+    """
     print_with_color(message, Colors.WARNING)
 
 
 def print_header_for_step(message: str):
+    """
+    Print header with format onto console.
+    :param message:
+    """
     print_header("\n======= {} =======".format(message))
 
 
@@ -156,6 +193,13 @@ def generate_random_string(
 
 
 def run_async_method(loop, method, *args):
+    """
+    Run async method.
+
+    :param loop: the loop to run method until complete.
+    :param method: method to run.
+    :param args: arguments of method.
+    """
     import asyncio
     if not loop:
         loop = asyncio.get_event_loop()
@@ -177,6 +221,10 @@ def create_folder(folder):
 
 
 def parse_config():
+    """
+    Return config in 'config.json' as a dictionary.
+    :return:
+    """
     import json
 
     config_file = os.path.join(os.path.dirname(__file__), 'config.json')
@@ -192,6 +240,13 @@ def parse_config():
 
 
 def print_client_result(passed_req, failed_req, elapsed_time):
+    """
+    Print a client result (used in perf_add_request and perf_get_request).
+
+    :param passed_req:
+    :param failed_req:
+    :param elapsed_time:
+    """
     force_print_warning_to_console("\nTotal: %d" % (failed_req +
                                                     passed_req))
     force_print_green_to_console("Passed: %d" % passed_req)
