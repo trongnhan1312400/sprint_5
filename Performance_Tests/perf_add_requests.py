@@ -119,6 +119,9 @@ class PerformanceTesterForAddingRequest:
         utils.create_folder(self.info_dir)
 
     async def test(self):
+        """
+        Execute ADD request testing.
+        """
 
         if self.debug:
             print("Pool name: %s" % self.pool_name)
@@ -180,6 +183,9 @@ class PerformanceTesterForAddingRequest:
         return self.finish_time - self.start_time
 
     async def __create_pool_config(self):
+        """
+        Create pool configuration from genesis file.
+        """
         try:
             utils.print_header("\n\n\tCreate ledger config "
                                "from genesis txn file")
@@ -196,6 +202,9 @@ class PerformanceTesterForAddingRequest:
                 raise
 
     async def __open_pool(self):
+        """
+        Open pool config and get wallet handle.
+        """
         try:
             utils.print_header("\n\tOpen pool ledger")
             self.pool_handle = await pool.open_pool_ledger(
@@ -205,6 +214,10 @@ class PerformanceTesterForAddingRequest:
             utils.print_error(str(e))
 
     async def __create_wallet(self):
+        """
+        Create wallet.
+        """
+
         try:
             utils.print_header("\n\tCreate wallet")
             await wallet.create_wallet(self.pool_name,
@@ -221,6 +234,10 @@ class PerformanceTesterForAddingRequest:
                 raise
 
     async def __open_wallet(self):
+        """
+        Open wallet and get wallet handle.
+        """
+
         try:
             utils.print_header("\n\tOpen wallet")
             self.wallet_handle = await wallet.open_wallet(
@@ -242,6 +259,9 @@ class PerformanceTesterForAddingRequest:
             raise
 
     async def __close_pool_and_wallet(self):
+        """
+        Clean up after testing complete.
+        """
         utils.print_header("\n\tClose wallet")
         try:
             await wallet.close_wallet(self.wallet_handle)

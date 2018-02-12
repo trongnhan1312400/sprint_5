@@ -160,8 +160,9 @@ class PerformanceTesterGetSentRequestFromLedger:
             self.info_dir, '{}_requests_info*{}'.format(self.req_kind,
                                                         '.txt')))
         if not lst_files:
-            utils.print_error('Cannot found any request info. '
-                              'Skip sending get request... Abort')
+            utils.force_print_error_to_console(
+                'Cannot found any request info. '
+                'Skip sending get request... Abort')
             sys.exit(1)
 
         return lst_files

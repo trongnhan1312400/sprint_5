@@ -144,6 +144,11 @@ class PerformanceTestRunner:
         seconds = total_time % 60
 
         ttl_txns = self.passed_req + self.failed_req
+
+        if ttl_txns == 0:
+            print('There is no request sent.', file=result_file)
+            return
+
         ttl_seconds = total_time
         txns_per_second = int(ttl_txns / ttl_seconds)
         txns_per_client = ttl_txns / self.options.clients
@@ -223,4 +228,5 @@ class PerformanceTestRunner:
 
 
 if __name__ == '__main__':
+
     PerformanceTestRunner().run()
