@@ -7,6 +7,7 @@ import asyncio
 import sys
 import perf_add_requests
 import perf_get_requests
+import requests_sender
 
 
 #                   ==================== Notes and information ====================
@@ -51,8 +52,11 @@ class Options:
                             help='Directory you want to store requests info when sending adding request. '
                                  'If you start getting request testing, program will collect info from this dir instead.'
                                  'Default value will be {}'.format(
-                                os.path.dirname(__file__)),
-                            default=os.path.dirname(__file__), required=False,
+                                os.path.join(os.path.dirname(__file__),
+                                             "request_info")),
+                            default=os.path.join(os.path.dirname(__file__),
+                                                 "request_info"),
+                            required=False,
                             dest='info_dir')
 
         parser.add_argument('-n',
@@ -106,9 +110,19 @@ class PerformanceTestRunner:
         self.passed_req = self.failed_req = 0
         self.result_path = os.path.join(os.path.dirname(__file__), 'results')
         utils.create_folder(self.result_path)
+        log_path = os.path.join(os.path.dirname(__file__), 'logs')
+        utils.create_folder(log_path)
+
+        now = time.strftime("%d-%m-%Y_%H-%M-%S")
         self.result_path = os.path.join(self.result_path,
-                                        'result_{}.txt'.format(time.strftime(
-                                            "%d-%m-%Y_%H-%M-%S")))
+                                        'result_{}.txt'.format(now))
+        temp = 'get' if self.options.getting else ""
+
+        log_path = os.path.join(
+            log_path, '{}-perf-{}{}_{}.log'.format(self.options.clients, temp,
+                                                   self.options.kind, now))
+        requests_sender.RequestsSender.init_log_file(log_path)
+        utils.create_folder(self.options.info_dir)
 
     def run(self):
         if not self.options.log:
@@ -126,6 +140,7 @@ class PerformanceTestRunner:
         with open(self.result_path, 'w') as result:
             self.write_result(result)
         self.write_result(sys.stdout)
+        requests_sender.RequestsSender.close_log_file()
 
     def collect_result(self):
         self.passed_req = self.failed_req = 0
@@ -228,5 +243,4 @@ class PerformanceTestRunner:
 
 
 if __name__ == '__main__':
-
     PerformanceTestRunner().run()

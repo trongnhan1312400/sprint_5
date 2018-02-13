@@ -83,13 +83,14 @@ class Option:
 
 
 class PerformanceTesterForAddingRequest:
-    def __init__(self, info_dir=os.path.dirname(__file__),
+    def __init__(self, info_dir=os.path.join(os.path.dirname(__file__),
+                                             "request_info"),
                  request_num=100, request_kind='nym',
                  seed='000000000000000000000000Trustee1', thread_num=1,
                  debug=False, log=False):
         self.config = utils.parse_config()
 
-        self.info_dir = os.path.join(info_dir, request_kind)
+        self.info_dir = info_dir
         self.req_num = request_num
         self.req_kind = request_kind
         self.log = log
@@ -168,7 +169,7 @@ class PerformanceTesterForAddingRequest:
         sender = requests_sender.RequestsSender(self.log)
         try:
             await sender.sign_and_submit_several_reqs_from_files(
-            args, req_files, self.req_kind)
+                args, req_files, self.req_kind)
         except Exception:
             pass
         self.passed_req, self.failed_req = sender.passed_req, sender.failed_req

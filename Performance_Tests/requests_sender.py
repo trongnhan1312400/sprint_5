@@ -9,10 +9,15 @@ from indy import ledger
 
 
 class RequestsSender:
+    __log_file = None
+    __start_compare = 0
+
     def __init__(self, log=False):
         self.log = log
         self.passed_req = self.failed_req = 0
         self.start_time = self.finish_time = 0
+        self.first_txn = -1
+        self.last_txn = -1
         pass
 
     def print_success_msg(self, kind, response):
@@ -25,6 +30,35 @@ class RequestsSender:
     def print_error_msg(kind, request):
         utils.force_print_error_to_console(
             '\nCannot submit {} request:\n{}'.format(kind, request))
+
+    @staticmethod
+    def init_log_file(path: str):
+        RequestsSender.close_log_file()
+        utils.create_folder(os.path.dirname(path))
+        RequestsSender.__log_file = open(path, 'w')
+
+    @staticmethod
+    def close_log_file():
+        if RequestsSender.__log_file \
+                and not RequestsSender.__log_file.closed:
+            RequestsSender.__log_file.close()
+
+    @staticmethod
+    def print_log(status, elapsed_time, req):
+        req = req.strip()
+        log_req = "======== Request: {}".format(req)
+        log_status = "======== Status: {}".\
+            format('Failed' if not status else 'Passed')
+        if status:
+            log = '{}\n{}\n{}\n\n'.format(
+                log_req, log_status,
+                "======== Processed time: {}seconds".format(str(elapsed_time)))
+        else:
+            log = '{}\n{}\n\n'.format(log_req, log_status)
+
+        if RequestsSender.__log_file \
+                and not RequestsSender.__log_file.closed:
+            RequestsSender.__log_file.write(log)
 
     def sign_and_submit_several_reqs_from_files(self, args, files, kind):
         """
@@ -96,17 +130,25 @@ class RequestsSender:
 
         req = req_data['request']
 
+        elapsed_time = 0
+
         try:
             utils.print_header_for_step('Sending {} request'.format(kind))
+            start_time = time.time()
             response = await ledger.sign_and_submit_request(pool_handle,
                                                             wallet_handle,
                                                             submitter_did, req)
+            elapsed_time = time.time() - start_time
             self.passed_req += 1
             self.print_success_msg(kind, response)
+            status = True
         except Exception as e:
             self.print_error_msg(kind, req)
             utils.force_print_error_to_console(str(e) + "\n")
             self.failed_req += 1
+            status = False
+
+        RequestsSender.print_log(status, elapsed_time, req)
 
     def submit_several_reqs_from_files(self, args, files, kind):
         """
@@ -171,12 +213,22 @@ class RequestsSender:
 
         req = data
 
+        elapsed_time = 0
+
         try:
             utils.print_header_for_step('Sending get {} request'.format(kind))
+
+            start_time = time.time()
             response = await ledger.submit_request(pool_handle, req)
+            elapsed_time = time.time() - start_time
             self.passed_req += 1
             self.print_success_msg(kind, response)
+            status = True
         except Exception as e:
             self.print_error_msg(kind, req)
             utils.force_print_error_to_console(str(e) + "\n")
             self.failed_req += 1
+            status = False
+
+        RequestsSender.print_log(status, elapsed_time, req)
+
