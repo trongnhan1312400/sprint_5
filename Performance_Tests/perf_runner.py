@@ -158,7 +158,7 @@ class PerformanceTestRunner:
         minutes = total_time / 60 % 60
         seconds = total_time % 60
 
-        ttl_txns = self.passed_req + self.failed_req
+        ttl_txns = int(self.passed_req + self.failed_req)
 
         if ttl_txns == 0:
             print('There is no request sent.', file=result_file)

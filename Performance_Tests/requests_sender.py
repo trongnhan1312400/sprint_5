@@ -10,12 +10,14 @@ from indy import ledger
 
 class RequestsSender:
     __log_file = None
-    __start_compare = 0
+    start_time = finish_time = -1
+    lock = threading.Lock()
 
     def __init__(self, log=False):
         self.log = log
         self.passed_req = self.failed_req = 0
-        self.start_time = self.finish_time = 0
+        self.start_time = self.finish_time = -1
+        self.__lock = threading.Lock()
         self.first_txn = -1
         self.last_txn = -1
         pass
@@ -60,6 +62,16 @@ class RequestsSender:
                 and not RequestsSender.__log_file.closed:
             RequestsSender.__log_file.write(log)
 
+    def update_start_and_finish_time(self, new_start_time, new_finish_time):
+        self.lock.acquire()
+        if self.start_time < 0 \
+                or self.start_time > new_start_time:
+            self.start_time = new_start_time
+        if self.finish_time < new_finish_time:
+            self.finish_time = new_finish_time
+        
+        self.lock.release()
+        
     def sign_and_submit_several_reqs_from_files(self, args, files, kind):
         """
         Sign and submit several request that stored in files.
@@ -75,7 +87,6 @@ class RequestsSender:
         if not self.log:
             utils.start_capture_console()
 
-        self.start_time = time.time()
         for file_name in files:
             temp_thread = threading.Thread(
                 target=self.sign_and_submit_reqs_in_thread,
@@ -85,7 +96,6 @@ class RequestsSender:
 
         for thread in threads:
             thread.join()
-        self.finish_time = time.time()
 
         utils.stop_capture_console()
         utils.print_header('\n\tSubmitting requests complete')
@@ -98,15 +108,21 @@ class RequestsSender:
         :param file: request file (store all request you want to submit).
         :param kind: kind of request.
         """
+        start_time = finish_time = 0
         with open(file, "r") as req_file:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             for line in req_file:
-                utils.run_async_method(loop, self.sign_and_submit_req, args,
-                                       kind, line)
+                response_time = \
+                    utils.run_async_method(
+                        loop, self.sign_and_submit_req, args, kind, line)
+                if start_time == 0:
+                    start_time = response_time
+                if response_time > finish_time:
+                    finish_time = response_time
 
             loop.close()
-
+        self.update_start_and_finish_time(start_time, finish_time)
         try:
             os.remove(file)
         except IOError:
@@ -131,6 +147,7 @@ class RequestsSender:
         req = req_data['request']
 
         elapsed_time = 0
+        response_time = None
 
         try:
             utils.print_header_for_step('Sending {} request'.format(kind))
@@ -138,7 +155,8 @@ class RequestsSender:
             response = await ledger.sign_and_submit_request(pool_handle,
                                                             wallet_handle,
                                                             submitter_did, req)
-            elapsed_time = time.time() - start_time
+            response_time = time.time()
+            elapsed_time = response_time - start_time
             self.passed_req += 1
             self.print_success_msg(kind, response)
             status = True
@@ -149,6 +167,7 @@ class RequestsSender:
             status = False
 
         RequestsSender.print_log(status, elapsed_time, req)
+        return response_time
 
     def submit_several_reqs_from_files(self, args, files, kind):
         """
@@ -165,7 +184,6 @@ class RequestsSender:
         if not self.log:
             utils.start_capture_console()
 
-        self.start_time = time.time()
         for file_name in files:
             temp_thread = threading.Thread(
                 target=self.submit_reqs_in_thread,
@@ -175,7 +193,6 @@ class RequestsSender:
 
         for thread in threads:
             thread.join()
-        self.finish_time = time.time()
 
         utils.stop_capture_console()
         utils.print_header('\n\tSubmitting requests complete')
@@ -188,17 +205,24 @@ class RequestsSender:
         :param file: request file (store all request you want to submit).
         :param kind: kind of request.
         """
+        start_time = finish_time = 0
         with open(file, "r") as req_file:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             for line in req_file:
-                utils.run_async_method(loop, self.submit_req, args,
-                                       kind, line)
+                response_time = utils.run_async_method(
+                    loop, self.submit_req, args, kind, line)
+                if start_time == 0:
+                    start_time = response_time
+                if response_time > finish_time:
+                    finish_time = response_time
             loop.close()
         try:
             os.remove(file)
         except IOError:
             pass
+
+        self.update_start_and_finish_time(start_time, finish_time)
 
     async def submit_req(self, args, kind, data):
         """
@@ -215,12 +239,15 @@ class RequestsSender:
 
         elapsed_time = 0
 
+        response_time = None
+
         try:
             utils.print_header_for_step('Sending get {} request'.format(kind))
-
             start_time = time.time()
             response = await ledger.submit_request(pool_handle, req)
-            elapsed_time = time.time() - start_time
+            response_time = time.time()
+            elapsed_time = response_time - start_time
+
             self.passed_req += 1
             self.print_success_msg(kind, response)
             status = True
@@ -232,3 +259,4 @@ class RequestsSender:
 
         RequestsSender.print_log(status, elapsed_time, req)
 
+        return response_time
