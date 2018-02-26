@@ -11,7 +11,7 @@ Indy SDK getting started guide contains the following files:
 - rotate_key.py: Rotate my verky and update it in the ledger.
 
 # How to run
-After building successfully the Indy SDK for Python, you are able to run those scripts as a python program.
+After installing successfully the Indy SDK for Python, you are able to run those scripts as a python program.
 ```
 python3.5 add_nym.py
 ```
