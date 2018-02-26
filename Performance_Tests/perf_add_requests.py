@@ -97,6 +97,8 @@ class PerformanceTesterForAddingRequest:
         self.seed = seed
         if thread_num <= 0:
             self.thread_num = 1
+        elif request_num < thread_num:
+            self.thread_num = request_num
         else:
             self.thread_num = thread_num
         self.debug = debug

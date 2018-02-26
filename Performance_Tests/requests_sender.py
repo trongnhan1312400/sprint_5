@@ -69,9 +69,9 @@ class RequestsSender:
             self.start_time = new_start_time
         if self.finish_time < new_finish_time:
             self.finish_time = new_finish_time
-        
+
         self.lock.release()
-        
+
     def sign_and_submit_several_reqs_from_files(self, args, files, kind):
         """
         Sign and submit several request that stored in files.
@@ -113,6 +113,7 @@ class RequestsSender:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             for line in req_file:
+                # delay - NAK
                 response_time = \
                     utils.run_async_method(
                         loop, self.sign_and_submit_req, args, kind, line)

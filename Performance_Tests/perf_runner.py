@@ -52,8 +52,8 @@ class Options:
                             help='Directory you want to store requests info when sending adding request. '
                                  'If you start getting request testing, program will collect info from this dir instead.'
                                  'Default value will be {}'.format(
-                                os.path.join(os.path.dirname(__file__),
-                                             "request_info")),
+                                  os.path.join(os.path.dirname(__file__),
+                                               "request_info")),
                             default=os.path.join(os.path.dirname(__file__),
                                                  "request_info"),
                             required=False,
@@ -211,16 +211,23 @@ class PerformanceTestRunner:
 
     def start_tester_in_thread(self):
         threads = list()
-        for _ in range(self.options.clients):
-            tester = self.create_tester()
-            self.list_tester.append(tester)
-            thread = threading.Thread(target=self.run_tester_in_thread,
-                                      kwargs={'tester': tester})
-            thread.start()
-            threads.append(thread)
+        # chia req gui.
+        # while check timeout - NAK
+        time_out = 10
+        current_time = time.time()
+        while((time.time() - current_time) < time_out):
+            for _ in range(self.options.clients):
+                tester = self.create_tester()
+                self.list_tester.append(tester)
+                thread = threading.Thread(target=self.run_tester_in_thread,
+                                          kwargs={'tester': tester})
+                thread.daemon = True
+                thread.start()
+                threads.append(thread)
 
-        for thread in threads:
-            thread.join()
+            # timeout - NAK
+            for thread in threads:
+                thread.join(30)  # check join([timeout])
 
     def run_tester_in_thread(self, tester):
         loop = asyncio.new_event_loop()
@@ -228,9 +235,15 @@ class PerformanceTestRunner:
         loop.close()
 
     def create_tester(self):
+        # generate random add/get
+        # list["schema", "nym"]
+        # if (get):
+        #     check folder de update list
+        # check list = []
+        # neu = [] thi get-> add
         if self.options.adding:
             return perf_add_requests.PerformanceTesterForAddingRequest(
-                self.options.info_dir, self.options.txns, self.options.kind,
+                self.options.info_dir, 1, self.options.kind,
                 thread_num=self.options.thread_num, log=self.options.log
             )
         elif self.options.getting:
@@ -240,6 +253,21 @@ class PerformanceTestRunner:
             )
 
         return None
+
+
+class StoppableThread(threading.Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self):
+        super(StoppableThread, self).__init__()
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
 
 
 if __name__ == '__main__':
