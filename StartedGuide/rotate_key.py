@@ -47,7 +47,6 @@ Refer to below for detail steps.
 
 import asyncio
 import json
-import shutil
 
 from indy import wallet, signus, pool, ledger
 
@@ -76,11 +75,8 @@ def print_error(message):
     print(FAIL + "\n" + message + ENDC)
 
 
-async def build_schema_request():
+async def rotate_key():
     try:
-        # 0. Clean up the .indy/pool and .indy/wallet directories. We should
-        #    do this step to avoid IndyError.PoolLedgerConfigAlreadyExistsError
-        clean_up()
 
         # 1. Create the pool ledger from genesis txn file
         # A genesis txn file contains the information about the NODE and
@@ -189,15 +185,15 @@ async def build_schema_request():
 
         # 13. Build get NYM request to get verkey from ledger.
         print_log('13. Build get NYM request to get verkey from ledger')
-        get_nym_rq = await ledger.build_get_nym_request(did, did)
+        get_nym_req = await ledger.build_get_nym_request(did, did)
 
-        print_log('DONE - created get NYM request:\n{}'.format(get_nym_rq))
+        print_log('DONE - created get NYM request:\n{}'.format(get_nym_req))
 
         # 14. Submit built get NYM request and take verkey from response.
         print_log('14. Submit built get NYM request '
                   'and take verkey from response')
         gotten_nym = await ledger.submit_request(Variables.pool_handle,
-                                                 get_nym_rq)
+                                                 get_nym_req)
 
         print_log('DONE - gotten nym:\n{}'.format(gotten_nym))
 
@@ -209,7 +205,7 @@ async def build_schema_request():
             print_log("DONE - verkey in ledger was changed: " +
                       str(verkey_in_ledger))
         else:
-            err = 'FAIL - verkey in ledfer was not changed: {}'.format(
+            err = 'FAIL - verkey in ledger was not changed: {}'.format(
                 verkey_in_ledger)
             print_error(err)
             raise ValueError(err)
@@ -218,26 +214,9 @@ async def build_schema_request():
         print_error(str(e))
 
 
-def clean_up():
-    """  Clean up the .indy/pool and .indy/wallet directories  """
-    import os
-    x = os.path.expanduser('~')
-    work_dir = x + os.sep + ".indy_client"
-    if os.path.exists(work_dir + "/pool/" + Variables.pool_name):
-        try:
-            shutil.rmtree(work_dir + "/pool/" + Variables.pool_name)
-        except IOError as E:
-            print(str(E))
-    if os.path.exists(work_dir + "/wallet/" + Variables.wallet_name):
-        try:
-            shutil.rmtree(work_dir + "/wallet/" + Variables.wallet_name)
-        except IOError as E:
-            print(str(E))
-
-
 # Create the loop instance using asyncio
 loop = asyncio.get_event_loop()
-loop.run_until_complete(build_schema_request())
+loop.run_until_complete(rotate_key())
 
 # Close the loop instance
 loop.close()

@@ -39,7 +39,6 @@ Refer to below for detail steps.
 
 import asyncio
 import json
-import shutil
 
 from indy import wallet, signus, pool, ledger
 from indy.error import IndyError
@@ -65,9 +64,6 @@ def print_log(value_color):
 
 async def build_schema_request():
     try:
-        # 0. Clean up the .indy/pool and .indy/wallet directories. We should
-        #    do this step to avoid IndyError.PoolLedgerConfigAlreadyExistsError
-        clean_up()
 
         # 1. Create the pool ledger from genesis txn file
         # A genesis txn file contains the information about the NODE and
@@ -135,23 +131,6 @@ async def build_schema_request():
         print_log("DONE - Result: " + str(result))
     except IndyError as E:
         print(str(E))
-
-
-def clean_up():
-    """  Clean up the .indy/pool and .indy/wallet directories  """
-    import os
-    x = os.path.expanduser('~')
-    work_dir = x + os.sep + ".indy_client"
-    if os.path.exists(work_dir + "/pool/" + Variables.pool_name):
-        try:
-            shutil.rmtree(work_dir + "/pool/" + Variables.pool_name)
-        except IOError as E:
-            print(str(E))
-    if os.path.exists(work_dir + "/wallet/" + Variables.wallet_name):
-        try:
-            shutil.rmtree(work_dir + "/wallet/" + Variables.wallet_name)
-        except IOError as E:
-            print(str(E))
 
 
 # Create the loop instance using asyncio
