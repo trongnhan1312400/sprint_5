@@ -90,18 +90,28 @@ class Options:
                                  'The default value will be "nym"',
                             action='store',
                             choices=['nym', 'schema', 'attribute', 'claim'],
-                            default='nym', dest='kind')
+                            default='nym', dest='kind', required=False)
 
         parser.add_argument('-log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
-                            action='store_true', default=False, dest='log')
+                            action='store_true', default=False, dest='log',
+                            required=False)
 
         parser.add_argument('-to',
                             help='Timeout of testing. This flag just visible in two mode "-l" and "-t"'
                                  'Default value will be 100.',
                             action='store', type=int,
-                            default=100, dest='time_out')
+                            default=100, dest='time_out', required=False)
+
+        parser.add_argument('--init',
+                            help='To build "GET" request, we need to '
+                                 'send "ADD" request first. This argument is '
+                                 'the number of "ADD" request will be sent '
+                                 'to ledger to make sample for "GET" requests.'
+                                 ' Default value will be 100',
+                            action='store', type=int, required=False,
+                            default=100, dest='number_of_request_samples')
 
         self.args = parser.parse_args()
 

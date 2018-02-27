@@ -48,7 +48,34 @@ class Option:
                             action='store', type=int,
                             default=100, dest='time_out')
 
+        parser.add_argument('--init',
+                            help='To build "GET" request, we need to '
+                                 'send "ADD" request first. This argument is '
+                                 'the number of "ADD" request will be sent '
+                                 'to ledger to make sample for "GET" requests.'
+                                 ' Default value will be 100',
+                            action='store', type=int,
+                            default=100, dest='number_of_request_samples')
+
         self.args = parser.parse_args()
+
+
+def catch_number_of_request_samples():
+    import sys
+    result = 100
+
+    if "--init" in sys.argv:
+        index = sys.argv.index("--init")
+        if index < len(sys.argv) - 1:
+            temp = -1
+            try:
+                temp = int(sys.argv[index + 1])
+            except ValueError:
+                pass
+            if temp > 0:
+                result = temp
+
+    return result
 
 
 class TesterSimulateTraffic(Tester):
@@ -56,6 +83,7 @@ class TesterSimulateTraffic(Tester):
     __kinds_of_request = ["nym", "attribute", "schema", "claim",
                           "get_nym", "get_attribute", "get_schema",
                           "get_claim"]
+    __number_of_request_samples = catch_number_of_request_samples()
 
     def __init__(self, number_of_clients: int = 2,
                  transactions_delay: int = 100,
@@ -64,7 +92,8 @@ class TesterSimulateTraffic(Tester):
         super().__init__(log=log, seed=seed)
         if not TesterSimulateTraffic.__sample_req_info:
             utils.run_async_method(
-                None, TesterSimulateTraffic._prepare_samples, 10)
+                None, TesterSimulateTraffic._prepare_samples_for_get_req,
+                TesterSimulateTraffic.__number_of_request_samples)
             
         if time_out <= 0 or transactions_delay <= 0 or number_of_clients <= 0:
             return
@@ -149,7 +178,7 @@ class TesterSimulateTraffic(Tester):
         return lst_info
 
     @staticmethod
-    async def _prepare_samples(sample_num: int = 100):
+    async def _prepare_samples_for_get_req(sample_num: int = 100):
         keys = ["nym", "attribute", "schema", "claim"]
         if sample_num <= 0:
             return
