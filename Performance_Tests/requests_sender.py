@@ -261,3 +261,9 @@ class RequestsSender:
         RequestsSender.print_log(status, elapsed_time, req)
 
         return response_time
+
+    async def send_request(self, args, kind, data):
+        if kind.startswith("get_"):
+            return await self.submit_req(args, kind.replace("get_", ""), data)
+        else:
+            return await self.sign_and_submit_req(args, kind, data)

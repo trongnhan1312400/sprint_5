@@ -3,6 +3,7 @@ import sys
 import json
 import glob
 import utils
+import perf_add_requests
 import requests_builder
 import requests_sender
 import argparse
@@ -63,12 +64,36 @@ class Options:
                                  'The default value will be 1', action='store',
                             type=int, default=1, dest='thread_num')
 
-        parser.add_argument('-l',
+        parser.add_argument('-log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
                             action='store_true', default=False)
 
         self.args = parser.parse_args()
+
+
+def generate_sample_request_info(kind, sample_num: int=100) -> list:
+    kinds = ["nym", "schema", "attribute", "claim"]
+
+    if kind not in kinds or sample_num <= 0:
+        return []
+
+    generator = perf_add_requests.PerformanceTesterForAddingRequest(
+        request_num=sample_num, request_kind=kind)
+
+    generator.test()
+    lst_info = list()
+    with open(generator.info_file_path, "r") as info_file:
+        for line in info_file:
+            if len(line) > 2:
+                lst_info.append(line)
+
+    try:
+        os.remove(generator.info_file_path)
+    except IOError:
+        pass
+
+    return lst_info
 
 
 class PerformanceTesterGetSentRequestFromLedger:

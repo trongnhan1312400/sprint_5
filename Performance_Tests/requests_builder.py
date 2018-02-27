@@ -63,7 +63,7 @@ class RequestBuilder:
                                                  number_of_file,
                                                  data_files: list):
         """
-        uild several ADD request and write them to list of temporary files.
+        Build several ADD request and write them to list of temporary files.
         :param args: contain all necessary arguments to build a request
                     (pool_handle, wallet_handle, submitter_did)
         :param req_kind: kind of ADD request (schema, nym, attribute, claim).
@@ -111,6 +111,17 @@ class RequestBuilder:
         utils.print_header("\n\tBuilding request complete")
 
         return files
+
+    @staticmethod
+    async def build_request(args: dict, kind: str, data: str=""):
+        if kind.startswith("get_"):
+            kind = kind.replace("get_", "")
+            builder = RequestBuilder.get_getting_req_builder(kind)
+            return await builder(args, data)
+        else:
+            builder = RequestBuilder.get_adding_req_builder(kind)
+            result = await builder(args)
+            return result[0]
 
     @staticmethod
     def divide(number_of_file, number_of_req):
@@ -353,7 +364,6 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
             data = json.loads(data)
@@ -384,7 +394,6 @@ class RequestBuilder:
 
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
             data = json.loads(data)
@@ -415,7 +424,6 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
             data = json.loads(data)
@@ -447,7 +455,6 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
             data = json.loads(data)

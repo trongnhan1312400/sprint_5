@@ -7,6 +7,8 @@ import asyncio
 import sys
 import perf_add_requests
 import perf_get_requests
+import perf_load
+import perf_traffic
 import requests_sender
 
 
@@ -43,6 +45,17 @@ class Options:
                             action='store_true',
                             default=False, required=False, dest='getting')
 
+        parser.add_argument('-l',
+                            help='Use this parameter to perform load test',
+                            action='store_true',
+                            default=False, required=False, dest='loading')
+
+        parser.add_argument('-t',
+                            help='Use this parameter to simulate traffic',
+                            action='store_true',
+                            default=False, required=False,
+                            dest='simulate_traffic')
+
         parser.add_argument('-c',
                             help='Number of client you want to create. Default value will be 1',
                             default=1, type=int, required=False,
@@ -52,8 +65,8 @@ class Options:
                             help='Directory you want to store requests info when sending adding request. '
                                  'If you start getting request testing, program will collect info from this dir instead.'
                                  'Default value will be {}'.format(
-                                  os.path.join(os.path.dirname(__file__),
-                                               "request_info")),
+                                os.path.join(os.path.dirname(__file__),
+                                             "request_info")),
                             default=os.path.join(os.path.dirname(__file__),
                                                  "request_info"),
                             required=False,
@@ -62,6 +75,7 @@ class Options:
         parser.add_argument('-n',
                             help='How many transactions you want to submit to ledger when starting adding requests.'
                                  'If you start getting request testing, this arg will be ignore.'
+                                 'In case that you use flag "-t", this parameter will be the number of transactions of a set.'
                                  'Default value will be 100',
                             default=100, type=int, required=False, dest='txns')
 
@@ -78,29 +92,44 @@ class Options:
                             choices=['nym', 'schema', 'attribute', 'claim'],
                             default='nym', dest='kind')
 
-        parser.add_argument('-l',
+        parser.add_argument('-log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
                             action='store_true', default=False, dest='log')
+
+        parser.add_argument('-to',
+                            help='Timeout of testing. This flag just visible in two mode "-l" and "-t"'
+                                 'Default value will be 100.',
+                            action='store', type=int,
+                            default=100, dest='time_out')
 
         self.args = parser.parse_args()
 
 
 class PerformanceTestRunner:
+    modes = ["-t", "-l", "-a", "-g"]
+
     def __init__(self):
         self.options = Options().args
 
         self.tester = None
-        if not self.options.adding and not self.options.getting:
+
+        temp = 0
+        for mode in PerformanceTestRunner.modes:
+            if mode in sys.argv:
+                temp += 1
+
+        if temp == 0:
             utils.print_error(
                 'Cannot determine any kind of request for testing')
             utils.print_error(
-                'May be you missing both arguments "-a" and "-b"')
+                'May be you missing arguments "-a" or "-b" or "-t" or "-l"')
             sys.exit(1)
 
-        if self.options.adding and self.options.getting:
+        if temp > 1:
             utils.force_print_error_to_console(
-                '"-a" and "-g" cannot exist at the same time\n')
+                '"-a" and "-g" and "-t" and "-l" '
+                'cannot exist at the same time\n')
             sys.exit(1)
 
         self.list_tester = list()
@@ -116,11 +145,9 @@ class PerformanceTestRunner:
         now = time.strftime("%d-%m-%Y_%H-%M-%S")
         self.result_path = os.path.join(self.result_path,
                                         'result_{}.txt'.format(now))
-        temp = 'get' if self.options.getting else ""
 
         log_path = os.path.join(
-            log_path, '{}-perf-{}{}_{}.log'.format(self.options.clients, temp,
-                                                   self.options.kind, now))
+            log_path, self.create_log_file_name())
         requests_sender.RequestsSender.init_log_file(log_path)
         utils.create_folder(self.options.info_dir)
 
@@ -128,11 +155,13 @@ class PerformanceTestRunner:
         if not self.options.log:
             utils.start_capture_console()
         self.start_time = time.time()
-        if self.options.clients > 1:
+        if self.options.adding or self.options.getting \
+                and self.options.clients > 1:
             self.start_tester_in_thread()
         else:
             self.list_tester.append(self.create_tester())
             utils.run_async_method(None, self.list_tester[-1].test)
+
         self.finish_time = time.time()
 
         utils.stop_capture_console()
@@ -170,6 +199,7 @@ class PerformanceTestRunner:
 
         print("\n -----------  Total time to run the test: %dh:%dm:%ds" % (
             hours, minutes, seconds) + "  -----------", file=result_file)
+        print("\n Kind = " + self.create_kind(), file=result_file)
         print("\n Clients = " + str(self.options.clients), file=result_file)
         print("\n Fastest client = " + str(self.fastest), file=result_file)
         print("\n Lowest client = " + str(self.lowest), file=result_file)
@@ -189,14 +219,17 @@ class PerformanceTestRunner:
 
     def find_lowest_and_fastest_tester_duration(self):
 
-        self.lowest = self.fastest = self.list_tester[0].get_elapsed_time()
+        if self.options.adding or self.options.getting:
+            self.lowest = self.fastest = self.list_tester[0].get_elapsed_time()
 
-        for tester in self.list_tester:
-            temp_elapsed_time = tester.get_elapsed_time()
-            if self.lowest < temp_elapsed_time:
-                self.lowest = temp_elapsed_time
-            if self.fastest > temp_elapsed_time:
-                self.fastest = temp_elapsed_time
+            for tester in self.list_tester:
+                temp_elapsed_time = tester.get_elapsed_time()
+                if self.lowest < temp_elapsed_time:
+                    self.lowest = temp_elapsed_time
+                if self.fastest > temp_elapsed_time:
+                    self.fastest = temp_elapsed_time
+        else:
+            self.lowest = self.fastest = "N/A"
 
     def find_start_and_finish_time(self):
         self.start_time = self.list_tester[0].start_time
@@ -211,25 +244,20 @@ class PerformanceTestRunner:
 
     def start_tester_in_thread(self):
         threads = list()
-        # chia req gui.
-        # while check timeout - NAK
-        time_out = 10
-        current_time = time.time()
-        while((time.time() - current_time) < time_out):
-            for _ in range(self.options.clients):
-                tester = self.create_tester()
-                self.list_tester.append(tester)
-                thread = threading.Thread(target=self.run_tester_in_thread,
-                                          kwargs={'tester': tester})
-                thread.daemon = True
-                thread.start()
-                threads.append(thread)
+        for _ in range(self.options.clients):
+            tester = self.create_tester()
+            self.list_tester.append(tester)
+            thread = threading.Thread(target=self.run_tester_in_thread,
+                                      kwargs={'tester': tester})
+            thread.daemon = True
+            thread.start()
+            threads.append(thread)
 
-            # timeout - NAK
-            for thread in threads:
-                thread.join(30)  # check join([timeout])
+        for thread in threads:
+            thread.join()
 
-    def run_tester_in_thread(self, tester):
+    @staticmethod
+    def run_tester_in_thread(tester):
         loop = asyncio.new_event_loop()
         utils.run_async_method(loop, tester.test)
         loop.close()
@@ -244,30 +272,51 @@ class PerformanceTestRunner:
         if self.options.adding:
             return perf_add_requests.PerformanceTesterForAddingRequest(
                 self.options.info_dir, 1, self.options.kind,
-                thread_num=self.options.thread_num, log=self.options.log
-            )
+                thread_num=self.options.thread_num, log=self.options.log)
+
         elif self.options.getting:
             return perf_get_requests.PerformanceTesterGetSentRequestFromLedger(
                 self.options.info_dir, self.options.kind,
-                self.options.thread_num, log=self.options.log
-            )
+                self.options.thread_num, log=self.options.log)
+
+        elif self.options.loading:
+            return perf_load.TesterSimulateLoad(
+                self.options.clients, self.options.txns,
+                self.options.time_out, self.options.log)
+
+        elif self.options.simulate_traffic:
+            return perf_traffic.TesterSimulateTraffic(
+                self.options.clients, self.options.txns,
+                self.options.time_out, self.options.log)
 
         return None
 
+    def create_kind(self) -> str:
+        if self.options.adding:
+            return "send 'ADD {}' requests".format(self.options.kind)
+        elif self.options.getting:
+            return "send 'GET {}' requests".format(self.options.kind)
+        elif self.options.simulate_traffic:
+            return "simulate traffic"
+        elif self.options.loading:
+            return "perform load test"
 
-class StoppableThread(threading.Thread):
-    """Thread class with a stop() method. The thread itself has to check
-    regularly for the stopped() condition."""
+        return ""
 
-    def __init__(self):
-        super(StoppableThread, self).__init__()
-        self._stop_event = threading.Event()
+    def create_log_file_name(self):
 
-    def stop(self):
-        self._stop_event.set()
+        temp = 'get' if self.options.getting else ""
+        now = time.strftime("%d-%m-%Y_%H-%M-%S")
 
-    def stopped(self):
-        return self._stop_event.is_set()
+        if self.options.adding or self.options.getting:
+            return '{}-perf-{}{}_{}.log'.format(self.options.clients, temp,
+                                                self.options.kind, now)
+        elif self.options.simulate_traffic:
+            return '{}-{}_{}.log'.format(self.options.clients,
+                                         'simulate_traffic', now)
+        else:
+            return '{}-{}_{}.log'.format(self.options.clients,
+                                         'perform_load_test', now)
 
 
 if __name__ == '__main__':

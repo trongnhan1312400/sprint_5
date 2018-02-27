@@ -26,9 +26,8 @@ class Option:
             description='Script to create multiple requests '
                         'and store their info in .txt files to be  '
                         'used by the \'perf_get_requests.py\' script.\n\n',
-            usage='To create 500 NYMs in the default \'request_info\' directory '
-                  'and use \nthe default \'stability_pool\' transaction file '
-                  'in the current working directory, '
+            usage='To create 500 NYMs in the default '
+                  '\'request_info\' directory '
                   '\nuse: python3.6 perf_add_requests.py -p '
                   'testPool -n 500 -i 000000000000000000000000Steward1 -s 1')
 
@@ -74,7 +73,7 @@ class Option:
                             action='store_true', default=False,
                             dest='debug')
 
-        parser.add_argument('-l',
+        parser.add_argument('-log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
                             action='store_true', default=False, dest='log')
@@ -300,10 +299,10 @@ class PerformanceTesterForAddingRequest:
 
 if __name__ == '__main__':
     options = Option()
-    args = options.args
+    opts = options.args
     tester = PerformanceTesterForAddingRequest(
-        args.info_dir, args.number_of_requests, args.kind, args.seed,
-        args.thread_num, args.debug, args.log)
+        opts.info_dir, opts.number_of_requests, opts.kind, opts.seed,
+        opts.thread_num, opts.debug, opts.log)
 
     utils.run_async_method(None, tester.test)
 
