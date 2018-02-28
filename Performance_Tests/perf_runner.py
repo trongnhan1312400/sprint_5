@@ -214,20 +214,23 @@ class PerformanceTestRunner:
         print("\n -----------  Total time to run the test: %dh:%dm:%ds" % (
             hours, minutes, seconds) + "  -----------", file=result_file)
         print("\n Kind: " + self.create_kind(), file=result_file)
-        print("\n Clients: " + str(self.options.clients), file=result_file)
-        print("\n Fastest transaction: " + str(self.fastest),
+        print("\n Client(s): " + str(self.options.clients), file=result_file)
+        print("\n Fastest transaction (individual thread): {} second(s)".
+              format(str(self.fastest)),
               file=result_file)
-        print("\n Lowest transaction: " + str(self.lowest), file=result_file)
-        print("\n Transaction per client: " + str(txns_per_client),
+        print("\n Lowest transaction (individual thread): {} second(s)".
+              format(str(self.lowest)), file=result_file)
+        print("\n Transaction per client: " + str(int(txns_per_client)),
               file=result_file)
-        print("\n Total requested transactions: " + str(ttl_txns),
+        print("\n Total requested transactions: " + str(int(ttl_txns)),
               file=result_file)
         print("\n Total passed transactions: " + str(self.passed_req),
               file=result_file)
         print("\n Total failed transactions: " + str(self.failed_req),
               file=result_file)
-        print("\n Average time of a transaction: "
-              + str((self.finish_time - self.start_time) / ttl_txns),
+        print("\n Average time of a transaction "
+              "(multiple threads): {} second(s)".
+              format(str((self.finish_time - self.start_time) / ttl_txns)),
               file=result_file)
         print("\n Estimated transactions per second: " + str(txns_per_second),
               file=result_file)
