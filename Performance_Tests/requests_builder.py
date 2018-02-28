@@ -199,11 +199,11 @@ class RequestBuilder:
         wallet_handle = args['wallet_handle']
         submitter_did = args['submitter_did']
         try:
-            utils.print_header_for_step('\nCreate did')
+            utils.print_header_for_step('Create did')
             did, _, = await signus.create_and_store_my_did(wallet_handle, '{}')
 
             # Send NYM to ledger
-            utils.print_header("\n======== Create NYM request ========")
+            utils.print_header("\n======== Build NYM request ========")
             nym_req = await ledger.build_nym_request(submitter_did, did, None,
                                                      None, None)
             req_info = json.dumps({'kind': 'nym', 'data': {'target_did': did}})
