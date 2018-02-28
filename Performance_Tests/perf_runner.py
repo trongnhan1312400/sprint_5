@@ -92,7 +92,7 @@ class Options:
                             choices=['nym', 'schema', 'attribute', 'claim'],
                             default='nym', dest='kind', required=False)
 
-        parser.add_argument('-log',
+        parser.add_argument('--log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
                             action='store_true', default=False, dest='log',
@@ -162,6 +162,9 @@ class PerformanceTestRunner:
         utils.create_folder(self.options.info_dir)
 
     def run(self):
+
+        utils.print_header("Start {}...\n".format(self.create_kind()))
+
         if not self.options.log:
             utils.start_capture_console()
         self.start_time = time.time()
@@ -181,13 +184,15 @@ class PerformanceTestRunner:
         self.write_result(sys.stdout)
         requests_sender.RequestsSender.close_log_file()
 
+        utils.print_header("\nFinish {}\n".format(self.create_kind()))
+
     def collect_result(self):
         self.passed_req = self.failed_req = 0
         for tester in self.list_tester:
             self.failed_req += tester.failed_req
             self.passed_req += tester.passed_req
 
-        self.find_lowest_and_fastest_tester_duration()
+        self.find_lowest_and_fastest_transaction()
 
         self.find_start_and_finish_time()
 
@@ -199,47 +204,44 @@ class PerformanceTestRunner:
 
         ttl_txns = int(self.passed_req + self.failed_req)
 
-        if ttl_txns == 0:
-            print('There is no request sent.', file=result_file)
-            return
-
         ttl_seconds = total_time
+        if ttl_seconds == 0:
+            print('\nThere is no request sent.\n', file=result_file)
+            return
         txns_per_second = int(ttl_txns / ttl_seconds)
         txns_per_client = ttl_txns / self.options.clients
 
         print("\n -----------  Total time to run the test: %dh:%dm:%ds" % (
             hours, minutes, seconds) + "  -----------", file=result_file)
-        print("\n Kind = " + self.create_kind(), file=result_file)
-        print("\n Clients = " + str(self.options.clients), file=result_file)
-        print("\n Fastest client = " + str(self.fastest), file=result_file)
-        print("\n Lowest client = " + str(self.lowest), file=result_file)
-        print("\n Transaction per client = " + str(txns_per_client),
+        print("\n Kind: " + self.create_kind(), file=result_file)
+        print("\n Clients: " + str(self.options.clients), file=result_file)
+        print("\n Fastest transaction: " + str(self.fastest),
               file=result_file)
-        print("\n Total requested transactions = " + str(ttl_txns),
+        print("\n Lowest transaction: " + str(self.lowest), file=result_file)
+        print("\n Transaction per client: " + str(txns_per_client),
               file=result_file)
-        print("\n Total passed transactions = " + str(self.passed_req),
+        print("\n Total requested transactions: " + str(ttl_txns),
               file=result_file)
-        print("\n Total failed transactions = " + str(self.failed_req),
+        print("\n Total passed transactions: " + str(self.passed_req),
               file=result_file)
-        print("\n Average time of a transaction = "
+        print("\n Total failed transactions: " + str(self.failed_req),
+              file=result_file)
+        print("\n Average time of a transaction: "
               + str((self.finish_time - self.start_time) / ttl_txns),
               file=result_file)
-        print("\n Estimated transactions per second = " + str(txns_per_second),
+        print("\n Estimated transactions per second: " + str(txns_per_second),
               file=result_file)
 
-    def find_lowest_and_fastest_tester_duration(self):
-
-        if self.options.adding or self.options.getting:
-            self.lowest = self.fastest = self.list_tester[0].get_elapsed_time()
-
-            for tester in self.list_tester:
-                temp_elapsed_time = tester.get_elapsed_time()
-                if self.lowest < temp_elapsed_time:
-                    self.lowest = temp_elapsed_time
-                if self.fastest > temp_elapsed_time:
-                    self.fastest = temp_elapsed_time
-        else:
-            self.lowest = self.fastest = "N/A"
+    def find_lowest_and_fastest_transaction(self):
+        self.lowest = self.list_tester[0].lowest_txn
+        self.fastest = self.list_tester[0].fastest_txn
+        for tester in self.list_tester:
+            temp_lowest = tester.lowest_txn
+            temp_fastest = tester.fastest_txn
+            if self.lowest < temp_lowest:
+                self.lowest = temp_lowest
+            if self.fastest > temp_fastest:
+                self.fastest = temp_fastest
 
     def find_start_and_finish_time(self):
         self.start_time = self.list_tester[0].start_time
@@ -281,7 +283,7 @@ class PerformanceTestRunner:
         # neu = [] thi get-> add
         if self.options.adding:
             return perf_add_requests.PerformanceTesterForAddingRequest(
-                self.options.info_dir, 1, self.options.kind,
+                self.options.info_dir, self.options.txns, self.options.kind,
                 thread_num=self.options.thread_num, log=self.options.log)
 
         elif self.options.getting:
@@ -303,13 +305,13 @@ class PerformanceTestRunner:
 
     def create_kind(self) -> str:
         if self.options.adding:
-            return "send 'ADD {}' requests".format(self.options.kind)
+            return "sending 'ADD {}' requests".format(self.options.kind)
         elif self.options.getting:
-            return "send 'GET {}' requests".format(self.options.kind)
+            return "sending 'GET {}' requests".format(self.options.kind)
         elif self.options.simulate_traffic:
-            return "simulate traffic"
+            return "simulating traffic"
         elif self.options.loading:
-            return "perform load test"
+            return "performing load test"
 
         return ""
 

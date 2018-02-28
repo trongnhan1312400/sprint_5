@@ -18,6 +18,7 @@ class Tester:
         self.threads = list()
         self.passed_req = self.failed_req = 0
         self.start_time = self.finish_time = 0
+        self.fastest_txn = self.lowest_txn = -1
 
     async def test(self):
         if not self.log:
@@ -42,6 +43,9 @@ class Tester:
         utils.print_header("\n\t======== Finished ========")
 
         utils.stop_capture_console()
+
+    def get_elapsed_time(self):
+        return self.finish_time - self.start_time
 
     async def _test(self):
         pass

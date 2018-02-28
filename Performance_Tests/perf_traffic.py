@@ -37,7 +37,7 @@ class Option:
                             action='store', type=int, 
                             default=100, dest='transactions_delay')
 
-        parser.add_argument('-log',
+        parser.add_argument('--log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
                             action='store_true', default=False, dest='log')
@@ -120,6 +120,8 @@ class TesterSimulateTraffic(Tester):
 
         self.passed_req = self.__sender.passed_req
         self.failed_req = self.__sender.failed_req
+        self.fastest_txn = self.__sender.fastest_txn
+        self.lowest_txn = self.__sender.lowest_txn
 
     def __update(self):
         self.__lock.acquire()

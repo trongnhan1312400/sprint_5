@@ -364,9 +364,13 @@ class RequestBuilder:
         """
         if not data:
             return ''
+
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'nym':
                 return ''
 
@@ -396,7 +400,10 @@ class RequestBuilder:
             return ''
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'attribute':
                 return ''
 
@@ -426,7 +433,10 @@ class RequestBuilder:
             return ''
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'schema':
                 return ''
 
@@ -457,7 +467,10 @@ class RequestBuilder:
             return ''
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'claim':
                 return ''
 

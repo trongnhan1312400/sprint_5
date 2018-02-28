@@ -1,14 +1,11 @@
 import os
 import sys
-import json
 import glob
 import utils
-import perf_add_requests
+import argparse
+import perf_tester
 import requests_builder
 import requests_sender
-import argparse
-from indy import signus, wallet, pool
-from indy.error import IndyError
 
 
 # Run this script to process output from the .txt output from
@@ -53,102 +50,45 @@ class Options:
                             choices=['nym', 'schema', 'attribute', 'claim'],
                             default='nym', dest='kind')
 
-        parser.add_argument('-b',
-                            help='To see additional output,'
-                                 ' set debug output to true',
-                            action='store_true', default=False,
-                            dest='debug')
-
         parser.add_argument('-s',
                             help='Specify the number of threads'
                                  'The default value will be 1', action='store',
                             type=int, default=1, dest='thread_num')
 
-        parser.add_argument('-log',
+        parser.add_argument('--log',
                             help='To see all log. If this flag does not exist,'
                                  'program just only print fail message',
-                            action='store_true', default=False)
+                            action='store_true', default=False, dest="log")
 
         self.args = parser.parse_args()
 
 
-def generate_sample_request_info(kind, sample_num: int=100) -> list:
-    kinds = ["nym", "schema", "attribute", "claim"]
-
-    if kind not in kinds or sample_num <= 0:
-        return []
-
-    generator = perf_add_requests.PerformanceTesterForAddingRequest(
-        request_num=sample_num, request_kind=kind)
-
-    generator.test()
-    lst_info = list()
-    with open(generator.info_file_path, "r") as info_file:
-        for line in info_file:
-            if len(line) > 2:
-                lst_info.append(line)
-
-    try:
-        os.remove(generator.info_file_path)
-    except IOError:
-        pass
-
-    return lst_info
-
-
-class PerformanceTesterGetSentRequestFromLedger:
+class PerformanceTesterGetSentRequestFromLedger(perf_tester.Tester):
     def __init__(self, info_dir=os.path.join(os.path.dirname(__file__),
                                              "request_info"),
-                 kind='nym', thread_num=1, debug=False, log=False):
+                 kind='nym', thread_num=1, log=False):
+        super().__init__(log, '000000000000000000000000Trustee1')
         if thread_num <= 0:
             self.thread_num = 1
         else:
             self.thread_num = thread_num
         self.info_dir = info_dir
         self.req_kind = kind
-        self.debug = debug
-        self.config = utils.parse_config()
         self.pool_handle = self.wallet_handle = 0
-        self.submitter_did = ''
-        self.seed = '000000000000000000000000Steward1'
-        self.log = log
 
         self.threads = list()
         self.works_per_threads = list()
         self.lst_req_info = list()
-        self.start_time = self.finish_time = 0
-        self.passed_req = self.failed_req = 0
-        self.pool_name = utils.generate_random_string(prefix="pool")
-        self.wallet_name = utils.generate_random_string(prefix='wallet')
 
-    async def test(self):
+    async def _test(self):
         """  Process to run the Ger NYMs command """
 
         infor_files = self.__collect_requests_info_files()
 
-        if self.debug:
-            print("\n\n" + 50 * "-")
-            print("Pool name: %s" % self.pool_name)
-            print("Key to use: %s" % str(self.seed))
-            print("Directory to use: " + self.info_dir)
-            print("Path to genesis transaction file: " +
-                  str(self.config.pool_genesis_file))
-            print(50 * '-')
-            # print("Thread Number %d" % repr(threadnum))
-            # input("Wait.........")
-
         # 1. Create ledger config from genesis txn file
-        await self.__create_pool_config()
-
         # 2. Open pool
-        await self.__open_pool()
-
         # 3. Create My Wallet and Get Wallet Handle
-        await self.__create_wallet()
-        await self.__open_wallet()
-
         # 4. Create the DID to use
-        await self.__create_submitter_did()
 
         args = {'submitter_did': self.submitter_did,
                 'pool_handle': self.pool_handle,
@@ -170,14 +110,8 @@ class PerformanceTesterGetSentRequestFromLedger:
         self.passed_req, self.failed_req = sender.passed_req, sender.failed_req
         self.start_time, self.finish_time = (sender.start_time,
                                              sender.finish_time)
-
-        # 7. Run the cleanup
-        await self.__close_pool_and_wallet()
-
-        utils.print_header('\n\t========= Finish =========')
-
-    def get_elapsed_time(self):
-        return self.finish_time - self.start_time
+        self.fastest_txn = sender.fastest_txn
+        self.lowest_txn = sender.lowest_txn
 
     def __collect_requests_info_files(self):
 
@@ -192,109 +126,14 @@ class PerformanceTesterGetSentRequestFromLedger:
 
         return lst_files
 
-    async def __create_pool_config(self):
-        try:
-            utils.print_header("\n\n\tCreate ledger config "
-                               "from genesis txn file")
-
-            pool_config = json.dumps(
-                {'genesis_txn': self.config.pool_genesis_file})
-            await pool.create_pool_ledger_config(self.pool_name,
-                                                 pool_config)
-        except IndyError as e:
-            if e.error_code == 306:
-                utils.print_warning("The ledger already exists, moving on...")
-            else:
-                utils.print_error(str(e))
-                raise
-
-    async def __open_pool(self):
-        try:
-            utils.print_header("\n\tOpen pool ledger")
-            self.pool_handle = await pool.open_pool_ledger(
-                self.pool_name,
-                None)
-        except IndyError as e:
-            utils.print_error(str(e))
-
-    async def __create_wallet(self):
-        try:
-            utils.print_header("\n\tCreate wallet")
-            await wallet.create_wallet(self.pool_name,
-                                       self.wallet_name,
-                                       None, None, None)
-        except IndyError as e:
-            if e.error_code == 203:
-                utils.print_warning(
-                    "Wallet '%s' already exists.  "
-                    "Skipping wallet creation..." % str(
-                        self.wallet_name))
-            else:
-                utils.print_error(str(e))
-                raise
-
-    async def __open_wallet(self):
-        try:
-            utils.print_header("\n\tOpen wallet")
-            self.wallet_handle = await wallet.open_wallet(
-                self.wallet_name,
-                None, None)
-        except IndyError as e:
-            utils.print_error(str(e))
-            raise
-
-    async def __create_submitter_did(self):
-        try:
-            utils.print_header("\n\tCreate DID to use when sending")
-
-            self.submitter_did, _ = await signus.create_and_store_my_did(
-                self.wallet_handle, json.dumps({'seed': self.seed}))
-
-        except Exception as e:
-            utils.print_error(str(e))
-            raise
-
-    async def __close_pool_and_wallet(self):
-        utils.print_header("\n\tClose wallet")
-        try:
-            await wallet.close_wallet(self.wallet_handle)
-        except Exception as e:
-            utils.print_error("Cannot close wallet."
-                              "Skip closing wallet...")
-            utils.print_error(str(e))
-
-        utils.print_header("\n\tClose pool")
-        try:
-            await pool.close_pool_ledger(self.pool_handle)
-        except Exception as e:
-            utils.print_error("Cannot close pool."
-                              "Skip closing pool...")
-            utils.print_error(str(e))
-
-        utils.print_header("\n\tDelete wallet")
-        try:
-            await wallet.delete_wallet(self.wallet_name, None)
-        except Exception as e:
-            utils.print_error("Cannot delete wallet."
-                              "Skip deleting wallet...")
-            utils.print_error(str(e))
-
-        utils.print_header("\n\tDelete pool")
-        try:
-            await pool.delete_pool_ledger_config(self.pool_name)
-        except Exception as e:
-            utils.print_error("Cannot delete pool."
-                              "Skip deleting pool...")
-            utils.print_error(str(e))
-
 
 if __name__ == '__main__':
     options = Options()
-    args = options.args
-    tester = PerformanceTesterGetSentRequestFromLedger(args.info_dir,
-                                                       args.kind,
-                                                       args.thread_num,
-                                                       args.debug, args.l)
+    opts = options.args
+    tester = PerformanceTesterGetSentRequestFromLedger(opts.info_dir,
+                                                       opts.kind,
+                                                       opts.thread_num,
+                                                       opts.log)
 
     # Start the method
     elapsed_time = utils.run_async_method(None, tester.test)
