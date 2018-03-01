@@ -213,7 +213,8 @@ class TesterSimulateTraffic(Tester):
     @staticmethod
     async def _prepare_samples_for_get_req(sample_num: int = 100):
         """
-        Init sample for get request
+        Init samples for "GET" requests.
+
         :param sample_num: create a number of samples request information for
                            each kind of request (nym, attribute, claim, schema)
         """
@@ -233,6 +234,7 @@ class TesterSimulateTraffic(Tester):
     def _random_req_kind():
         """
         Random choice a request kind.
+
         :return: request kind.
         """
         return random.choice(TesterSimulateTraffic.__kinds_of_request)
