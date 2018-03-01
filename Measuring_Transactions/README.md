@@ -20,7 +20,7 @@ Step 3. Calculate the transactions per minute/second.
 Using -s xxx to calculate from transactions xxx to the last transaction.
 Using -s xxx -e yyy to calculate from transaction xxx to transaction yyy.
 
-e.g.: The total
+e.g.: calculate from the starting transaction (26001)
 python3.5  measuring_transactions.py -s 26001
 
 result:
@@ -29,23 +29,4 @@ To number: 26086 - Timestamp: 1519806108
 ADD measurement
 469 txns/min
 7 txns/sec
-```
-
-```
-From number: 26001 - Timestamp: 1519806097
-Meaning:
-Transaction seqNo: 26001
-Time stamp: 1519806097
-```
-
-```
-To number: 26086 - Timestamp: 1519806108
-Meaning:
-Transaction seqNo: 26086
-Time stamp: 1519806108
-```
-
-```
-469 txns/min  => 469 transactions per minute
-7 txns/sec    => 7 transactions per second
 ```
