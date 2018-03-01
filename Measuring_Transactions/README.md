@@ -17,5 +17,5 @@ e.g.: return 18500
 Step 2: run the test.
 
 Step 3. Calculate the transactions per minute
-python3.5  measuring_transactions.py -n 18500
+python3.5  measuring_transactions.py -n 18501
 ```
