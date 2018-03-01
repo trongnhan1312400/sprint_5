@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "RequestSender" that sends requests base
+on kind of them.
+"""
+
 import json
 import utils
 import threading
@@ -11,18 +20,22 @@ from indy import ledger
 class RequestsSender:
     __log_file = None
     start_time = finish_time = -1
-    lock = threading.Lock()
 
     def __init__(self, log=False):
         self.log = log
         self.passed_req = self.failed_req = 0
         self.start_time = self.finish_time = -1
-        self.__lock = threading.Lock()
+        self.lock = threading.Lock()
         self.first_txn = -1
         self.last_txn = -1
+        self.fastest_txn = -1
+        self.lowest_txn = -1
         pass
 
     def print_success_msg(self, kind, response):
+        """
+        Print success message to console.
+        """
         if self.log:
             utils.force_print_green_to_console(
                 '\nSubmit {} request '
@@ -30,26 +43,39 @@ class RequestsSender:
 
     @staticmethod
     def print_error_msg(kind, request):
+        """
+        Print error message to console.
+        """
         utils.force_print_error_to_console(
             '\nCannot submit {} request:\n{}'.format(kind, request))
 
     @staticmethod
     def init_log_file(path: str):
+        """
+        Initiate log file.
+        """
         RequestsSender.close_log_file()
         utils.create_folder(os.path.dirname(path))
         RequestsSender.__log_file = open(path, 'w')
 
     @staticmethod
     def close_log_file():
+        """
+        Close log file.
+        """
         if RequestsSender.__log_file \
                 and not RequestsSender.__log_file.closed:
             RequestsSender.__log_file.close()
 
     @staticmethod
     def print_log(status, elapsed_time, req):
+        """
+        Print log to log file.
+        :return:
+        """
         req = req.strip()
         log_req = "======== Request: {}".format(req)
-        log_status = "======== Status: {}".\
+        log_status = "======== Status: {}". \
             format('Failed' if not status else 'Passed')
         if status:
             log = '{}\n{}\n{}\n\n'.format(
@@ -63,12 +89,28 @@ class RequestsSender:
             RequestsSender.__log_file.write(log)
 
     def update_start_and_finish_time(self, new_start_time, new_finish_time):
+        """
+        Synchronize within threads to update start and finish time.
+        """
         self.lock.acquire()
         if self.start_time < 0 \
                 or self.start_time > new_start_time:
             self.start_time = new_start_time
         if self.finish_time < new_finish_time:
             self.finish_time = new_finish_time
+
+        self.lock.release()
+
+    def update_fastest_and_lowest_txn(self, elapsed_time):
+        """
+        Synchronize within threads to update fastest and lowest transactions.
+        """
+        self.lock.acquire()
+        if self.lowest_txn < 0 or self.lowest_txn < elapsed_time:
+            self.lowest_txn = elapsed_time
+
+        if self.fastest_txn < 0 or self.fastest_txn > elapsed_time:
+            self.fastest_txn = elapsed_time
 
         self.lock.release()
 
@@ -158,6 +200,7 @@ class RequestsSender:
                                                             submitter_did, req)
             response_time = time.time()
             elapsed_time = response_time - start_time
+            self.update_fastest_and_lowest_txn(elapsed_time)
             self.passed_req += 1
             self.print_success_msg(kind, response)
             status = True
@@ -168,6 +211,7 @@ class RequestsSender:
             status = False
 
         RequestsSender.print_log(status, elapsed_time, req)
+
         return response_time
 
     def submit_several_reqs_from_files(self, args, files, kind):
@@ -250,6 +294,7 @@ class RequestsSender:
             elapsed_time = response_time - start_time
 
             self.passed_req += 1
+            self.update_fastest_and_lowest_txn(elapsed_time)
             self.print_success_msg(kind, response)
             status = True
         except Exception as e:
@@ -261,3 +306,20 @@ class RequestsSender:
         RequestsSender.print_log(status, elapsed_time, req)
 
         return response_time
+
+    async def send_request(self, args, kind, request):
+        """
+        Submit request to ledger.
+
+        :param args: contains some necessary arguments to submit request
+                     to ledger (pool handle, wallet handle, submitter did).
+        :param kind: kind of request (get_claim, get_attribute, get_nym,
+                     get_schema, schema, nym, attribute, claim).
+        :param request: request to send.
+        :return: response time.
+        """
+        if kind.startswith("get_"):
+            return await self.submit_req(args, kind.replace("get_", ""),
+                                         request)
+        else:
+            return await self.sign_and_submit_req(args, kind, request)

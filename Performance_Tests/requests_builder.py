@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "RequestBuilder" that builds requests
+base on king of them.
+"""
+
 import utils
 import json
 import os
@@ -63,7 +72,7 @@ class RequestBuilder:
                                                  number_of_file,
                                                  data_files: list):
         """
-        uild several ADD request and write them to list of temporary files.
+        Build several ADD request and write them to list of temporary files.
         :param args: contain all necessary arguments to build a request
                     (pool_handle, wallet_handle, submitter_did)
         :param req_kind: kind of ADD request (schema, nym, attribute, claim).
@@ -111,6 +120,27 @@ class RequestBuilder:
         utils.print_header("\n\tBuilding request complete")
 
         return files
+
+    @staticmethod
+    async def build_request(args: dict, kind: str, request_info: str=""):
+        """
+        Build a request from data base on kind of request.
+
+        :param args: contains some arguments to build request
+                     (submitter did, wallet handle, pool handle).
+        :param kind: kind of request (get_claim, get_attribute, get_nym,
+                     get_schema, schema, nym, attribute, claim).
+        :param request_info: to build "GET" request.
+        :return: built request.
+        """
+        if kind.startswith("get_"):
+            kind = kind.replace("get_", "")
+            builder = RequestBuilder.get_getting_req_builder(kind)
+            return await builder(args, request_info)
+        else:
+            builder = RequestBuilder.get_adding_req_builder(kind)
+            result = await builder(args)
+            return result[0]
 
     @staticmethod
     def divide(number_of_file, number_of_req):
@@ -183,16 +213,16 @@ class RequestBuilder:
         Build ADD nym request.
 
         :param args: arguments for building ADD nym request.
-        :return: ADD nym request
+        :return: nym request, request info.
         """
         wallet_handle = args['wallet_handle']
         submitter_did = args['submitter_did']
         try:
-            utils.print_header_for_step('\nCreate did')
+            utils.print_header_for_step('Create did')
             did, _, = await signus.create_and_store_my_did(wallet_handle, '{}')
 
             # Send NYM to ledger
-            utils.print_header("\n======== Create NYM request ========")
+            utils.print_header("\n======== Build NYM request ========")
             nym_req = await ledger.build_nym_request(submitter_did, did, None,
                                                      None, None)
             req_info = json.dumps({'kind': 'nym', 'data': {'target_did': did}})
@@ -212,7 +242,7 @@ class RequestBuilder:
         Build ADD schema request.
 
         :param args: arguments for building ADD schema request.
-        :return:
+        :return: schema request, request info.
         """
         submitter_did = args['submitter_did']
         try:
@@ -245,7 +275,7 @@ class RequestBuilder:
         Build ADD attribute request.
 
         :param args: arguments to build ADD attribute request.
-        :return: ADD attribute request.
+        :return: attribute request, request info.
         """
         pool_handle = args['pool_handle']
         wallet_handle = args['wallet_handle']
@@ -290,7 +320,7 @@ class RequestBuilder:
         Build ADD claim request.
 
         :param args: arguments to build ADD claim request.
-        :return: ADD claim request.
+        :return: claim request, request info.
         """
         import string
         import random
@@ -353,10 +383,13 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
+
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'nym':
                 return ''
 
@@ -384,10 +417,12 @@ class RequestBuilder:
 
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'attribute':
                 return ''
 
@@ -415,10 +450,12 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'schema':
                 return ''
 
@@ -447,10 +484,12 @@ class RequestBuilder:
         """
         if not data:
             return ''
-        data = json.loads(data)
         submitter_did = args['submitter_did']
         try:
-            data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
+            if isinstance(data, str):
+                data = json.loads(data)
             if data['kind'] != 'claim':
                 return ''
 
