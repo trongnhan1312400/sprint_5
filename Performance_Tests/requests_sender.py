@@ -33,6 +33,9 @@ class RequestsSender:
         pass
 
     def print_success_msg(self, kind, response):
+        """
+        Print success message to console.
+        """
         if self.log:
             utils.force_print_green_to_console(
                 '\nSubmit {} request '
@@ -40,23 +43,36 @@ class RequestsSender:
 
     @staticmethod
     def print_error_msg(kind, request):
+        """
+        Print error message to console.
+        """
         utils.force_print_error_to_console(
             '\nCannot submit {} request:\n{}'.format(kind, request))
 
     @staticmethod
     def init_log_file(path: str):
+        """
+        Initiate log file.
+        """
         RequestsSender.close_log_file()
         utils.create_folder(os.path.dirname(path))
         RequestsSender.__log_file = open(path, 'w')
 
     @staticmethod
     def close_log_file():
+        """
+        Close log file.
+        """
         if RequestsSender.__log_file \
                 and not RequestsSender.__log_file.closed:
             RequestsSender.__log_file.close()
 
     @staticmethod
     def print_log(status, elapsed_time, req):
+        """
+        Print log to log file.
+        :return:
+        """
         req = req.strip()
         log_req = "======== Request: {}".format(req)
         log_status = "======== Status: {}". \
@@ -73,6 +89,9 @@ class RequestsSender:
             RequestsSender.__log_file.write(log)
 
     def update_start_and_finish_time(self, new_start_time, new_finish_time):
+        """
+        Synchronize within threads to update start and finish time.
+        """
         self.lock.acquire()
         if self.start_time < 0 \
                 or self.start_time > new_start_time:
@@ -83,6 +102,9 @@ class RequestsSender:
         self.lock.release()
 
     def update_fastest_and_lowest_txn(self, elapsed_time):
+        """
+        Synchronize within threads to update fastest and lowest transactions.
+        """
         self.lock.acquire()
         if self.lowest_txn < 0 or self.lowest_txn < elapsed_time:
             self.lowest_txn = elapsed_time

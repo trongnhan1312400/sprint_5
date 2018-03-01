@@ -213,7 +213,7 @@ class RequestBuilder:
         Build ADD nym request.
 
         :param args: arguments for building ADD nym request.
-        :return: ADD nym request
+        :return: nym request, request info.
         """
         wallet_handle = args['wallet_handle']
         submitter_did = args['submitter_did']
@@ -242,7 +242,7 @@ class RequestBuilder:
         Build ADD schema request.
 
         :param args: arguments for building ADD schema request.
-        :return:
+        :return: schema request, request info.
         """
         submitter_did = args['submitter_did']
         try:
@@ -275,7 +275,7 @@ class RequestBuilder:
         Build ADD attribute request.
 
         :param args: arguments to build ADD attribute request.
-        :return: ADD attribute request.
+        :return: attribute request, request info.
         """
         pool_handle = args['pool_handle']
         wallet_handle = args['wallet_handle']
@@ -320,7 +320,7 @@ class RequestBuilder:
         Build ADD claim request.
 
         :param args: arguments to build ADD claim request.
-        :return: ADD claim request.
+        :return: claim request, request info.
         """
         import string
         import random

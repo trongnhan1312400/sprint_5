@@ -52,6 +52,8 @@ def start_capture_console():
     os.dup2(StandardIOInfo.capture_file.fileno(), sys.stdout.fileno())
     os.dup2(StandardIOInfo.capture_file.fileno(), sys.stderr.fileno())
 
+    return StandardIOInfo.capture_file
+
 
 def stop_capture_console():
     """
@@ -82,9 +84,6 @@ def stop_capture_console():
 def force_print_to_console(message: str, color: str):
     """
     Force print a message to console (no matter log is captured or not).
-
-    :param message:
-    :param color:
     """
     msg = color + message + Colors.ENDC
     print(msg)
@@ -96,7 +95,6 @@ def force_print_green_to_console(message: str):
     """
     Force print a message with green color to console
     (no matter log is captured or not).
-    :param message:
     """
     force_print_to_console(message, Colors.OKGREEN)
 
@@ -105,7 +103,6 @@ def force_print_error_to_console(message: str):
     """
     Force print a message with red color to console
     (no matter log is captured or not).
-    :param message:
     """
     force_print_to_console(message, Colors.FAIL)
 
@@ -114,7 +111,6 @@ def force_print_warning_to_console(message: str):
     """
     Force print a message with yellow color to console
     (no matter log is captured or not).
-    :param message:
     """
     force_print_to_console(message, Colors.WARNING)
 
@@ -122,8 +118,6 @@ def force_print_warning_to_console(message: str):
 def print_with_color(message: str, color: str):
     """
     Print a message with specified color onto console.
-    :param message:
-    :param color:
     """
     msg = color + message + Colors.ENDC
     print(msg)
@@ -132,7 +126,6 @@ def print_with_color(message: str, color: str):
 def print_error(message: str):
     """
     Print message onto console with "Fail" color.
-    :param message:
     """
     print_with_color(message, Colors.FAIL)
 
@@ -140,7 +133,6 @@ def print_error(message: str):
 def print_header(message: str):
     """
     Print message onto console with "Header" color.
-    :param message:
     """
     print_with_color(message, Colors.HEADER)
 
@@ -148,7 +140,6 @@ def print_header(message: str):
 def print_ok_green(message: str):
     """
     Print message onto console with "OK_GREEN" color.
-    :param message:
     """
     print_with_color(message, Colors.OKGREEN)
 
@@ -156,7 +147,6 @@ def print_ok_green(message: str):
 def print_ok_blue(message: str):
     """
     Print message onto console with "OK_BLUE" color.
-    :param message:
     """
     print_with_color(message, Colors.OKBLUE)
 
@@ -164,7 +154,6 @@ def print_ok_blue(message: str):
 def print_warning(message: str):
     """
     Print message onto console with yellow color.
-    :param message:
     """
     print_with_color(message, Colors.WARNING)
 
@@ -172,7 +161,6 @@ def print_warning(message: str):
 def print_header_for_step(message: str):
     """
     Print header with format onto console.
-    :param message:
     """
     print_header("\n======= {} =======".format(message))
 
@@ -181,7 +169,8 @@ def generate_random_string(
         prefix="", suffix="", size=20,
         characters: str = string.ascii_uppercase + string.digits):
     """
-    Generate random string .
+    Generate random string.
+
     :param prefix:  (optional) Prefix of a string.
     :param suffix:  (optional) Suffix of a string.
     :param size: (optional) Max length of a string (include prefix and suffix)
@@ -207,6 +196,8 @@ def run_async_method(loop, method, *args):
     :param loop: the loop to run method until complete.
     :param method: method to run.
     :param args: arguments of method.
+
+    :return: result of "method".
     """
     import asyncio
     if not loop:
@@ -218,7 +209,6 @@ def create_folder(folder):
     """
     Create folder if it is not exist.
     :param folder: folder need to create.
-    :return:
     """
     import errno
     try:
@@ -231,7 +221,8 @@ def create_folder(folder):
 def parse_config():
     """
     Return config in 'config.json' as a dictionary.
-    :return:
+
+    :return: config namespace.
     """
     import json
 
@@ -250,10 +241,6 @@ def parse_config():
 def print_client_result(passed_req, failed_req, elapsed_time):
     """
     Print a client result (used in perf_add_request and perf_get_request).
-
-    :param passed_req:
-    :param failed_req:
-    :param elapsed_time:
     """
     force_print_warning_to_console("\nTotal: %d" % (failed_req +
                                                     passed_req))

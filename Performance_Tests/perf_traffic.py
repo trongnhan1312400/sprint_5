@@ -26,7 +26,7 @@ class Option:
         parser = argparse.ArgumentParser(
             description='Script to simulate the traffic which will send'
                         'request to ledger in several sets. Each set contains '
-                        'a specified number of requests and between two set,'
+                        'a specified number of requests and between two set, '
                         'the system will be delayed for a random length of'
                         ' time (from 1 to 10 seconds).\n\n',
 

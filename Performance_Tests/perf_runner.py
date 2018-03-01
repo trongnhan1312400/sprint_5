@@ -24,16 +24,18 @@ import requests_sender
 class Options:
     def __init__(self):
         parser = argparse.ArgumentParser(
-            description='This script will create multiple threads of the perf_add_requests.py or '
-                        'the Perf_get_nyms.py.')
+            description='This script will execute the test base on the '
+                        'mode that user passes to system.')
 
         parser.add_argument('-a',
-                            help='Use this parameter to start adding request performance testing',
+                            help='Use this parameter to start adding '
+                                 'request performance testing',
                             action='store_true',
                             default=False, required=False, dest='adding')
 
         parser.add_argument('-g',
-                            help='Use this parameter to start getting request performance testing',
+                            help='Use this parameter to start getting '
+                                 'request performance testing',
                             action='store_true',
                             default=False, required=False, dest='getting')
 
@@ -49,30 +51,39 @@ class Options:
                             dest='simulate_traffic')
 
         parser.add_argument('-c',
-                            help='Number of client you want to create. Default value will be 1',
+                            help='Number of client you want to create. '
+                                 'Default value will be 1',
                             default=1, type=int, required=False,
                             dest='clients')
 
         parser.add_argument('-d',
-                            help='Directory you want to store requests info when sending adding request. '
-                                 'If you start getting request testing, program will collect info from this dir instead.'
-                                 'Default value will be {}'.format(
-                                os.path.join(os.path.dirname(__file__),
-                                             "request_info")),
+                            help='Directory you want to store requests '
+                                 'info when sending adding request. '
+                                 'If you start getting request testing, '
+                                 'program will collect info from '
+                                 'this dir instead.'
+                                 'Default value will be {}'.
+                            format(os.path.join(os.path.dirname(__file__),
+                                                "request_info")),
                             default=os.path.join(os.path.dirname(__file__),
                                                  "request_info"),
                             required=False,
                             dest='info_dir')
 
         parser.add_argument('-n',
-                            help='How many transactions you want to submit to ledger when starting adding requests.'
-                                 'If you start getting request testing, this arg will be ignore.'
-                                 'In case that you use flag "-t", this parameter will be the number of transactions of a set.'
+                            help='How many transactions you want to submit to '
+                                 'ledger when starting adding requests.'
+                                 'If you start getting request testing, '
+                                 'this arg will be ignore.'
+                                 'In case that you use flag "-t", this '
+                                 'parameter will be the number of '
+                                 'transactions of a set.'
                                  'Default value will be 100',
                             default=100, type=int, required=False, dest='txns')
 
         parser.add_argument('-s',
-                            help='Number of thread will be created by each client.'
+                            help='Number of thread will '
+                                 'be created by each client.'
                                  'Default value is 1',
                             default=1, type=int, required=False,
                             dest='thread_num')
@@ -91,7 +102,8 @@ class Options:
                             required=False)
 
         parser.add_argument('-to',
-                            help='Timeout of testing. This flag just visible in two mode "-l" and "-t"'
+                            help='Timeout of testing. This flag '
+                                 'just visible in two mode "-l" and "-t"'
                                  'Default value will be 100.',
                             action='store', type=int,
                             default=100, dest='time_out', required=False)
@@ -155,7 +167,7 @@ class PerformanceTestRunner:
 
     def run(self):
         """
-        Run the test
+        Run the test.
         """
 
         utils.print_header("Start {}...\n".format(self.get_kind_of_test()))
@@ -197,6 +209,7 @@ class PerformanceTestRunner:
     def write_result(self, result_file):
         """
         Compute and write result to file.
+
         :param result_file: the file that result will be written.
         """
         total_time = self.finish_time - self.start_time
@@ -287,7 +300,6 @@ class PerformanceTestRunner:
     def run_tester_in_thread(tester):
         """
         Execute testing function of tester.
-        :param tester:
         """
         loop = asyncio.new_event_loop()
         utils.run_async_method(loop, tester.test)
@@ -295,8 +307,9 @@ class PerformanceTestRunner:
 
     def create_tester(self):
         """
-        Create tester base mode "-a", "-t", "-g", "-l"
-        :return:
+        Create tester base mode "-a", "-t", "-g", "-l".
+
+        :return: tester
         """
         if self.options.adding:
             return perf_add_requests.PerformanceTesterForAddingRequest(

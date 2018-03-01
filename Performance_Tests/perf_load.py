@@ -94,6 +94,7 @@ class TesterSimulateLoad(Tester):
     def __update(self):
         """
         Synchronize within threads to update some necessary information.
+
         :return: True if can update, otherwise, return False.
         """
         self.__lock.acquire()
@@ -131,6 +132,7 @@ class TesterSimulateLoad(Tester):
     def _random_req_kind():
         """
         Choice a request kind randomly.
+
         :return: request kind.
         """
         return random.choice(TesterSimulateLoad.__kinds_of_request)
