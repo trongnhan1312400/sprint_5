@@ -205,8 +205,8 @@ async def calculate_transactions_per_minute(start_seqNo, end_seqNo):
         print_green("To number: " + str(latest_number) + " - Timestamp: "
                     + str(latest_time))
         print_green("ADD measurement")
-        print_green(str(result_minute) + " txns/min")
-        print_green(str(result_second) + " txns/sec")
+        print_green(str(int(result_minute)) + " txns/min")
+        print_green(str(int(result_second)) + " txns/sec")
     except Exception as e:
         print("Exception: " + str(e))
 
