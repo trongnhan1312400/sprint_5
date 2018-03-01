@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "PerformanceTesterGetSentRequestFromLedger" that
+executes submit several "GET" requests testing.
+"""
+
 import os
 import sys
 import glob
@@ -6,25 +15,6 @@ import argparse
 import perf_tester
 import requests_builder
 import requests_sender
-
-
-# Run this script to process output from the .txt output from
-# perf_add_requests.py or the add_nyms.py file.  This script will run the
-# getting request command on all the requests info found in the .txt output
-# files. The .txt files that used by this script should be stored in a
-# subdirectory in the same location this script is running from.
-# The command line options allow the user to specify the location of the text
-# files to process, the location of the genesis transaction file and the name
-# of the genesis transaction file.
-# If these options are not specified, default values will be used.
-
-# Examples:
-# specify the location for a genesis transaction file:
-#   python3.6 Perf_get_nyms.py -t ~/PycharmProjects/multithread/stability_pool
-# specify the directory name that contains the NYM files to process:
-#     python3.6 Perf_get_nyms.py -d /home/devone/PycharmProjects/multithread
-# specify the name of the genesis transaction file:
-#     python3.6 Perf_get_nyms.py -g test_file
 
 
 class Options:
@@ -81,9 +71,11 @@ class PerformanceTesterGetSentRequestFromLedger(perf_tester.Tester):
         self.lst_req_info = list()
 
     async def _test(self):
-        """  Process to run the Ger NYMs command """
+        """
+        Override from "Tester" class to implement testing steps.
+        """
 
-        infor_files = self.__collect_requests_info_files()
+        info_files = self.__collect_requests_info_files()
 
         # 1. Create ledger config from genesis txn file
         # 2. Open pool
@@ -97,7 +89,7 @@ class PerformanceTesterGetSentRequestFromLedger(perf_tester.Tester):
         # 5. Build getting request from info from files.
         builder = requests_builder.RequestBuilder(None, self.log)
         req_files = await builder.build_several_getting_req_to_files(
-            args, self.req_kind, self.thread_num, infor_files)
+            args, self.req_kind, self.thread_num, info_files)
 
         # 6. Submit getting request to ledger.
         sender = requests_sender.RequestsSender(self.log)
@@ -114,7 +106,11 @@ class PerformanceTesterGetSentRequestFromLedger(perf_tester.Tester):
         self.lowest_txn = sender.lowest_txn
 
     def __collect_requests_info_files(self):
+        """
+        Collect all request info file from directory.
 
+        :return: list of file name.
+        """
         lst_files = glob.glob(os.path.join(
             self.info_dir, '{}_requests_info*{}'.format(self.req_kind,
                                                         '.txt')))

@@ -1,3 +1,12 @@
+"""
+Created on Feb 27, 2018
+
+@author: nhan.nguyen
+
+This module contains class "Tester" that is the base class of other
+tester classes.
+"""
+
 import utils
 import json
 
@@ -21,6 +30,9 @@ class Tester:
         self.fastest_txn = self.lowest_txn = -1
 
     async def test(self):
+        """
+        The function execute testing steps.
+        """
         if not self.log:
             utils.start_capture_console()
 
@@ -45,9 +57,17 @@ class Tester:
         utils.stop_capture_console()
 
     def get_elapsed_time(self):
+        """
+        Return elapsed time of testing step.
+        :return: elapsed time.
+        """
         return self.finish_time - self.start_time
 
     async def _test(self):
+        """
+        The function that execute main steps for testing.
+        All base class should override this method.
+        """
         pass
 
     async def _create_pool_config(self):

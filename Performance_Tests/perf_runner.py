@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "PerformanceTestRunner" that executes the test base
+on the mode that user pass to system.
+"""
+
 import os
 import argparse
 import time
@@ -11,23 +20,6 @@ import perf_load
 import perf_traffic
 import requests_sender
 
-
-#                   ==================== Notes and information ====================
-# This script will run multiple instances (threaded) of the the perf_add_requests.py script or the Perf_get_nyms.py. The
-# command line parameters for each script are different and can be set from this script without modifying Add_nyms or
-# Get_nyms scripts.
-# The settings for Perf runner are 'clients' and 'txns'.  Clients is the number of threads (or client machines) to use,
-# the txns indicates how many transactions will run per client (thread).  These settings are specific to Perf_runner.py
-#
-# The command line for both performance scripts is created in the 'command' variable found below.  The default setting
-# for perf_add_requests.py uses the -n and -s parameters to specify the number of threads and clients to use.  The value
-# from clients is iterated through and uses 'i' to track which iteration is processing.
-# The default vaiables for the Add_nyms script will be  used.  If any of the default settings for Add_nyms or Get_nyms
-# needs to be modified, add the changes here to the perf runner by modifying the 'command' variable.
-#                   ================================================================
-# Example:
-# Run perf_add_requests.py:   python3.6 Perf_runner.py -a
-# Run Perf_gert_nyms.py using 3 clients (threads) - by setting clients to 3:  python3.6 Perf_runner.py -g
 
 class Options:
     def __init__(self):
@@ -162,8 +154,11 @@ class PerformanceTestRunner:
         utils.create_folder(self.options.info_dir)
 
     def run(self):
+        """
+        Run the test
+        """
 
-        utils.print_header("Start {}...\n".format(self.create_kind()))
+        utils.print_header("Start {}...\n".format(self.get_kind_of_test()))
 
         if not self.options.log:
             utils.start_capture_console()
@@ -184,9 +179,12 @@ class PerformanceTestRunner:
         self.write_result(sys.stdout)
         requests_sender.RequestsSender.close_log_file()
 
-        utils.print_header("\nFinish {}\n".format(self.create_kind()))
+        utils.print_header("\nFinish {}\n".format(self.get_kind_of_test()))
 
     def collect_result(self):
+        """
+        Collect all necessary information to make the result.
+        """
         self.passed_req = self.failed_req = 0
         for tester in self.list_tester:
             self.failed_req += tester.failed_req
@@ -197,6 +195,10 @@ class PerformanceTestRunner:
         self.find_start_and_finish_time()
 
     def write_result(self, result_file):
+        """
+        Compute and write result to file.
+        :param result_file: the file that result will be written.
+        """
         total_time = self.finish_time - self.start_time
         hours = total_time / 3600
         minutes = total_time / 60 % 60
@@ -213,7 +215,7 @@ class PerformanceTestRunner:
 
         print("\n -----------  Total time to run the test: %dh:%dm:%ds" % (
             hours, minutes, seconds) + "  -----------", file=result_file)
-        print("\n Kind: " + self.create_kind(), file=result_file)
+        print("\n Kind: " + self.get_kind_of_test(), file=result_file)
         print("\n Client(s): " + str(self.options.clients), file=result_file)
         print("\n Fastest transaction (individual thread): {} second(s)".
               format(str(self.fastest)),
@@ -236,6 +238,9 @@ class PerformanceTestRunner:
               file=result_file)
 
     def find_lowest_and_fastest_transaction(self):
+        """
+        Find lowest and fastest transactions.
+        """
         self.lowest = self.list_tester[0].lowest_txn
         self.fastest = self.list_tester[0].fastest_txn
         for tester in self.list_tester:
@@ -247,6 +252,10 @@ class PerformanceTestRunner:
                 self.fastest = temp_fastest
 
     def find_start_and_finish_time(self):
+        """
+        Find the earliest time that a client is started and latest time that a
+        client is finished.
+        """
         self.start_time = self.list_tester[0].start_time
         self.finish_time = self.list_tester[0].finish_time
 
@@ -258,6 +267,9 @@ class PerformanceTestRunner:
                 self.finish_time = tester.finish_time
 
     def start_tester_in_thread(self):
+        """
+        Create thread and start all the tester in list.
+        """
         threads = list()
         for _ in range(self.options.clients):
             tester = self.create_tester()
@@ -273,17 +285,19 @@ class PerformanceTestRunner:
 
     @staticmethod
     def run_tester_in_thread(tester):
+        """
+        Execute testing function of tester.
+        :param tester:
+        """
         loop = asyncio.new_event_loop()
         utils.run_async_method(loop, tester.test)
         loop.close()
 
     def create_tester(self):
-        # generate random add/get
-        # list["schema", "nym"]
-        # if (get):
-        #     check folder de update list
-        # check list = []
-        # neu = [] thi get-> add
+        """
+        Create tester base mode "-a", "-t", "-g", "-l"
+        :return:
+        """
         if self.options.adding:
             return perf_add_requests.PerformanceTesterForAddingRequest(
                 self.options.info_dir, self.options.txns, self.options.kind,
@@ -306,7 +320,12 @@ class PerformanceTestRunner:
 
         return None
 
-    def create_kind(self) -> str:
+    def get_kind_of_test(self) -> str:
+        """
+        Return kind of testing.
+
+        :return: kind of test.
+        """
         if self.options.adding:
             return "sending 'ADD {}' requests".format(self.options.kind)
         elif self.options.getting:
@@ -319,7 +338,11 @@ class PerformanceTestRunner:
         return ""
 
     def create_log_file_name(self):
+        """
+        Create and return log file name.
 
+        :return: log file name.
+        """
         temp = 'get' if self.options.getting else ""
         now = time.strftime("%d-%m-%Y_%H-%M-%S")
 

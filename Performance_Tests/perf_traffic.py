@@ -1,3 +1,12 @@
+"""
+Created on Feb 27, 2018
+
+@author: nhan.nguyen
+
+This module contains class "TesterSimulateTraffic" that simulates the real time
+traffic.
+"""
+
 import threading
 import random
 import time
@@ -61,6 +70,13 @@ class Option:
 
 
 def catch_number_of_request_samples():
+    """
+    Parse number of sample of "GET" requests will be created.
+    If the number is less than of equal with zero, default value (100) will be
+    returned.
+
+    :return: number of sample of "GET" requests.
+    """
     import sys
     result = 100
 
@@ -90,10 +106,9 @@ class TesterSimulateTraffic(Tester):
                  time_out: int = 300, log=False,
                  seed="000000000000000000000000Trustee1"):
         super().__init__(log=log, seed=seed)
-        if not TesterSimulateTraffic.__sample_req_info:
-            utils.run_async_method(
-                None, TesterSimulateTraffic._prepare_samples_for_get_req,
-                TesterSimulateTraffic.__number_of_request_samples)
+        utils.run_async_method(
+            None, TesterSimulateTraffic._prepare_samples_for_get_req,
+            TesterSimulateTraffic.__number_of_request_samples)
             
         if time_out <= 0 or transactions_delay <= 0 or number_of_clients <= 0:
             return
@@ -107,6 +122,9 @@ class TesterSimulateTraffic(Tester):
         self.__sender = requests_sender.RequestsSender()
 
     async def _test(self):
+        """
+        Override from "Tester" class to implement testing steps.
+        """
         lst_threads = list()
         self.__current_time = time.time()
         for _ in range(self.number_of_clients):
@@ -124,6 +142,9 @@ class TesterSimulateTraffic(Tester):
         self.lowest_txn = self.__sender.lowest_txn
 
     def __update(self):
+        """
+        Synchronize within threads to update some necessary information.
+        """
         self.__lock.acquire()
 
         if self.start_time == 0 and self.finish_time != 0:
@@ -137,6 +158,9 @@ class TesterSimulateTraffic(Tester):
         self.__lock.release()
 
     def __simulate_client(self):
+        """
+        Simulate a client to create real time traffic.
+        """
         loop = asyncio.new_event_loop()
         args = {"wallet_handle": self.wallet_handle,
                 "pool_handle": self.pool_handle,
@@ -157,6 +181,13 @@ class TesterSimulateTraffic(Tester):
     @staticmethod
     async def generate_sample_request_info(kind,
                                            sample_num: int = 100) -> list:
+        """
+        Generate sample request information.
+
+        :param kind: kind of request.
+        :param sample_num: number of samples will be generated.
+        :return: a list of samples request information.
+        """
         kinds = ["nym", "schema", "attribute", "claim"]
 
         if kind not in kinds or sample_num <= 0:
@@ -181,6 +212,14 @@ class TesterSimulateTraffic(Tester):
 
     @staticmethod
     async def _prepare_samples_for_get_req(sample_num: int = 100):
+        """
+        Init sample for get request
+        :param sample_num: create a number of samples request information for
+                           each kind of request (nym, attribute, claim, schema)
+        """
+        if TesterSimulateTraffic.__sample_req_info:
+            return
+
         keys = ["nym", "attribute", "schema", "claim"]
         if sample_num <= 0:
             return
@@ -192,10 +231,21 @@ class TesterSimulateTraffic(Tester):
 
     @staticmethod
     def _random_req_kind():
+        """
+        Random choice a request kind.
+        :return: request kind.
+        """
         return random.choice(TesterSimulateTraffic.__kinds_of_request)
 
     @staticmethod
     def _random_sample_for_get_request(kind: str):
+        """
+        Choice randomly a sample of request info base on kind of request.
+
+        :param kind: kind of request (get_nym, get_attribute,
+                     get_claim, get_schema).
+        :return: a random sample of request info.
+        """
         if kind.startswith("get_"):
             return random.choice(
                 TesterSimulateTraffic.__sample_req_info[kind.replace(
@@ -204,6 +254,14 @@ class TesterSimulateTraffic(Tester):
 
     @staticmethod
     async def _build_and_send_request(sender, args):
+        """
+        Build a request and send it onto ledger.
+
+        :param sender: send the request.
+        :param args: contains some arguments to send request to ledger
+                     (pool handle, wallet handle, submitter did)
+        :return: response time.
+        """
         kind = TesterSimulateTraffic._random_req_kind()
         data = TesterSimulateTraffic._random_sample_for_get_request(kind)
 

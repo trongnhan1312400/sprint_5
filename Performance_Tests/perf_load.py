@@ -1,3 +1,11 @@
+"""
+Created on Feb 27, 2018
+
+@author: nhan.nguyen
+
+This module contains class "TesterSimulateLoad" that performs load testing.
+"""
+
 import threading
 import time
 import utils
@@ -64,6 +72,9 @@ class TesterSimulateLoad(Tester):
         self.__sender = requests_sender.RequestsSender()
 
     async def _test(self):
+        """
+        Override from "Tester" class to implement testing steps.
+        """
         lst_threads = list()
         self.__current_time = time.time()
         for _ in range(self.number_of_clients):
@@ -81,6 +92,10 @@ class TesterSimulateLoad(Tester):
         self.lowest_txn = self.__sender.lowest_txn
 
     def __update(self):
+        """
+        Synchronize within threads to update some necessary information.
+        :return: True if can update, otherwise, return False.
+        """
         self.__lock.acquire()
         if self.start_time == 0 and self.finish_time != 0:
             self.start_time = self.finish_time
@@ -93,6 +108,9 @@ class TesterSimulateLoad(Tester):
         return result
 
     def __simulate_client(self):
+        """
+        Simulate the client to perform the test.
+        """
         loop = asyncio.new_event_loop()
         args = {"wallet_handle": self.wallet_handle,
                 "pool_handle": self.pool_handle,
@@ -111,10 +129,22 @@ class TesterSimulateLoad(Tester):
 
     @staticmethod
     def _random_req_kind():
+        """
+        Choice a request kind randomly.
+        :return: request kind.
+        """
         return random.choice(TesterSimulateLoad.__kinds_of_request)
 
     @staticmethod
     async def _build_and_send_request(sender, args):
+        """
+        Build a request and send it onto ledger.
+
+        :param sender: send the request.
+        :param args: contains some arguments to send request to ledger
+                     (pool handle, wallet handle, submitter did)
+        :return: response time.
+        """
         kind = TesterSimulateLoad._random_req_kind()
 
         req = await requests_builder.RequestBuilder.build_request(args, kind)

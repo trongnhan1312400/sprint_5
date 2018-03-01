@@ -1,3 +1,11 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains common functions that are used in several modules.
+"""
+
 import random
 import string
 import os

@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "RequestBuilder" that builds requests
+base on king of them.
+"""
+
 import utils
 import json
 import os
@@ -113,11 +122,21 @@ class RequestBuilder:
         return files
 
     @staticmethod
-    async def build_request(args: dict, kind: str, data: str=""):
+    async def build_request(args: dict, kind: str, request_info: str=""):
+        """
+        Build a request from data base on kind of request.
+
+        :param args: contains some arguments to build request
+                     (submitter did, wallet handle, pool handle).
+        :param kind: kind of request (get_claim, get_attribute, get_nym,
+                     get_schema, schema, nym, attribute, claim).
+        :param request_info: to build "GET" request.
+        :return: built request.
+        """
         if kind.startswith("get_"):
             kind = kind.replace("get_", "")
             builder = RequestBuilder.get_getting_req_builder(kind)
-            return await builder(args, data)
+            return await builder(args, request_info)
         else:
             builder = RequestBuilder.get_adding_req_builder(kind)
             result = await builder(args)

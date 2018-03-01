@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "RequestSender" that sends requests base
+on kind of them.
+"""
+
 import json
 import utils
 import threading
@@ -50,7 +59,7 @@ class RequestsSender:
     def print_log(status, elapsed_time, req):
         req = req.strip()
         log_req = "======== Request: {}".format(req)
-        log_status = "======== Status: {}".\
+        log_status = "======== Status: {}". \
             format('Failed' if not status else 'Passed')
         if status:
             log = '{}\n{}\n{}\n\n'.format(
@@ -276,8 +285,19 @@ class RequestsSender:
 
         return response_time
 
-    async def send_request(self, args, kind, data):
+    async def send_request(self, args, kind, request):
+        """
+        Submit request to ledger.
+
+        :param args: contains some necessary arguments to submit request
+                     to ledger (pool handle, wallet handle, submitter did).
+        :param kind: kind of request (get_claim, get_attribute, get_nym,
+                     get_schema, schema, nym, attribute, claim).
+        :param request: request to send.
+        :return: response time.
+        """
         if kind.startswith("get_"):
-            return await self.submit_req(args, kind.replace("get_", ""), data)
+            return await self.submit_req(args, kind.replace("get_", ""),
+                                         request)
         else:
-            return await self.sign_and_submit_req(args, kind, data)
+            return await self.sign_and_submit_req(args, kind, request)

@@ -1,3 +1,12 @@
+"""
+Created on Feb 2, 2018
+
+@author: nhan.nguyen
+
+This module contains class "PerformanceTesterForAddingRequest" that executes
+submit several "ADD" requests testing.
+"""
+
 import os
 import time
 import argparse
@@ -7,16 +16,6 @@ import requests_builder
 import requests_sender
 import perf_tester
 
-
-# The genesis pool transaction file and the
-# script (perf_add_requests.py) should both
-# be in the same directory.
-# To run, make sure to pass the key to use when creating the DIDs, for
-# example: python3.6 perf_add_requests.py
-# testPool 100 TestAddNodeWithTrustAnchor000001
-#          python3.6 perf_add_requests.py testPool 500
-# 000000000000000000000000Steward1 <number_of_threads>
-# -----------------------------------------------------------------------------
 
 class Option:
     def __init__(self):
@@ -104,7 +103,7 @@ class PerformanceTesterForAddingRequest(perf_tester.Tester):
 
     async def _test(self):
         """
-        Execute ADD request testing.
+        Override from "Tester" class to implement testing steps.
         """
         # 1. Create pool config.
         # 2. Open pool ledger
