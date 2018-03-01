@@ -20,14 +20,19 @@ class Options:
             'transaction and then show how many transactions per minute.')
 
         parser.add_argument('-c',
-                            help='Use to count the total transactions',
+                            help='Use to get current seqNo of transactions',
                             action='store_true',
                             default=False, required=False, dest='count')
 
-        parser.add_argument('-n',
+        parser.add_argument('-s',
                             help='It is the starting seqNo of the transaction',
                             action='store',
-                            default=False, required=False, dest='seqNo')
+                            default=False, required=False, dest='start_seqNo')
+
+        parser.add_argument('-e',
+                            help='It is the ending seqNo of the transaction',
+                            action='store',
+                            default=False, required=False, dest='end_seqNo')
         self.args = parser.parse_args()
 
 
@@ -145,18 +150,18 @@ async def get_current_number_of_the_transaction():
         print_error("Exception: " + str(e))
 
 
-async def get_a_transaction_by_seq_no(seq_no):
+async def get_a_transaction_by_seqNo(seqNo):
     """
     Get the transaction by number.
 
-    @param seq_no: The seq_no of the transaction.
+    @param seqNo: The seqNo of the transaction.
                    That will be used to get transaction information.
     @return: return the transaction information.
     """
     submitter_did, _ = await create_submitter_did()
 
     get_txn_request = await ledger.build_get_txn_request(submitter_did,
-                                                         int(seq_no))
+                                                         int(seqNo))
     result = await ledger.sign_and_submit_request(Var.pool_handle,
                                                   Var.wallet_handle,
                                                   submitter_did,
@@ -164,24 +169,29 @@ async def get_a_transaction_by_seq_no(seq_no):
     return result
 
 
-async def calculate_transactions_per_minute(seq_no):
+async def calculate_transactions_per_minute(start_seqNo, end_seqNo):
     """
     Calculating the transactions per minute by getting the begin transaction
     and the current transaction.
     Then it shows the number of transactions per minute, second.
 
-    @param seq_no: The seq_no of the transaction.
+    @param start_seqNo: The starting seqNo of the transaction.
+                   That will be used to get transaction information.
+    @param end_seqNo: The ending seqNo of the transaction.
                    That will be used to get transaction information.
     """
     try:
         # get time of the begin transaction
-        start_number = int(seq_no)
-        begin_trans = await get_a_transaction_by_seq_no(start_number)
+        start_number = int(start_seqNo)
+        begin_trans = await get_a_transaction_by_seqNo(start_number)
         begin_time = int(json.loads(begin_trans)['result']['data']['txnTime'])
 
         # get number and time of the latest transaction
-        latest_number = await get_current_number_of_the_transaction()
-        latest_trans = await get_a_transaction_by_seq_no(latest_number-1)
+        if not end_seqNo:
+            latest_number = await get_current_number_of_the_transaction() - 1
+        else:
+            latest_number = int(end_seqNo)
+        latest_trans = await get_a_transaction_by_seqNo(latest_number)
         latest_time = int(json.loads(latest_trans)['result']['data']['txnTime'])
 
         # calculate the transactions per second
@@ -207,8 +217,10 @@ if __name__ == '__main__':
         loop = get_event_loop()
         if args.count:
             loop.run_until_complete(get_current_number_of_the_transaction())
-        elif args.seqNo:
-            loop.run_until_complete(calculate_transactions_per_minute(args.seqNo))
+        elif args.start_seqNo:
+                loop.run_until_complete(
+                    calculate_transactions_per_minute(
+                        args.start_seqNo, args.end_seqNo))
         loop.close()
     except Exception as e:
         print("Exception: " + str(e))
